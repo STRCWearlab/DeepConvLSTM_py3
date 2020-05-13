@@ -119,7 +119,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 		start_time=datetime.now()
 
 	opt = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4, nesterov=True) #Stochastic gradient descent optimiser with nesterov momentum
-	scheduler = torch.optim.lr_scheduler.StepLR(opt,75) # Learning rate scheduler to reduce LR every 100 epochs
+	scheduler = torch.optim.lr_scheduler.StepLR(opt,100) # Learning rate scheduler to reduce LR every 100 epochs
 
 	criterion = nn.CrossEntropyLoss()
 
@@ -143,7 +143,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 			h = net.init_hidden(batch_size)
 
 			for batch in iterate_minibatches_batched(X_train, y_train, batch_size, len_seq, stride, shuffle=True, num_batches=num_batches, oversample=True, batchlen=batchlen):
-				 #Reinitialize hidden state in lstm before each batch - lstm can learn from batchlen*len_seq / SR seconds of data at a time.
+				
 
 				x,y= batch
 
@@ -175,13 +175,14 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 				loss = criterion(output, targets_cumulative.long())
 				train_losses.append(loss.item())
 				loss.backward()
-				torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5) # Clip gradients to prevent gradient explosion in lstm
+				torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
 
 				opt.step()	
 
 
 		
 			val_losses = []
+			val_losses_weighted = []
 			net.eval()
 
 			top_classes = []
@@ -225,11 +226,17 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 
 			f1score = metrics.f1_score(targets_cumulative, top_classes, average='weighted')
 			f1macro = metrics.f1_score(targets_cumulative, top_classes, average='macro')
+			balacc = metrics.balanced_accuracy_score(targets_cumulative, top_classes, adjusted=True)
 
 			
 			scheduler.step()
 
-			print('Epoch {}/{}, Train loss: {:.4f}, Val loss: {:.4f}, Val f1: {:.4f}, Macro f1: {:.4f}'.format(e+1,epochs,np.mean(train_losses),np.mean(val_losses),f1score,f1macro))
+			stopping_metric = (f1score+balacc-np.mean(val_losses))
+
+			print('Epoch {}/{}, Train loss: {:.4f}, Val loss: {:.4f}, Val f1: {:.4f}, M f1: {:.4f}, bal: {:.4f}, Metric: {:.4f}'.format(e+1,epochs,np.mean(train_losses),np.mean(val_losses),f1score,f1macro,balacc,stopping_metric))
+		
+
+			early_stopping((-stopping_metric), net)
 
 			writer = csv.writer(csvfile, delimiter=' ',
 									quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -262,6 +269,9 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 	net.eval()
 
 	val_losses = []
+	accuracy=0
+	f1score=0
+	f1macro=0
 	targets_cumulative = []
 	top_classes = []
 
@@ -317,7 +327,6 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 	print('---- CONFUSION MATRIX ----')
 	print(confmatrix)
 
-	print('Testing f1 score:',f1score)
 	print('Testing balanced acc:',balacc)
 
 
@@ -365,10 +374,4 @@ if __name__ == '__main__':
 
 	print('Plotting training curves')
 
-	try:
-		os.mkdir('Results/{}-{}-{}'.format(len_seq,stride,num_epochs))
-	except FileExistsError:
-		print('Results data already exists for these parameters.')
-
 	plot_data(save_fig='{}-{}-{}'.format(len_seq,stride,num_epochs))
-	torch.save(net.state_dict(),'models/{}-{}-{}_{}.pt'.format(len_seq,stride,num_epochs,time.time()))

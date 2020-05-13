@@ -8,6 +8,7 @@ import time
 import itertools
 import _pickle as cp
 from sliding_window import sliding_window
+import os
 
 def init_weights(m):
 	if type(m) == nn.LSTM:
@@ -106,7 +107,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=True, num_batches=-1
 			yield np.array([inputs[i] for i in batch(i)]),np.array( [targets[i] for i in batch(i)])
 
 
-def plot_data(logname='log.csv',save_fig=False):
+def plot_data(logname='log.csv',save_fig='LASGFNO'):
 	train_loss_plot = []
 	val_loss_plot = []
 	acc_plot = []
@@ -122,6 +123,11 @@ def plot_data(logname='log.csv',save_fig=False):
 			f1_plot.append(float(row[3]))
 			f1_macro.append(float(row[4]))
 
+	if save_fig:
+		try:
+			os.makedirs('Results/{}'.format(save_fig))
+		except FileExistsError:
+			pass
 
 
 	plt.figure(1)
@@ -202,4 +208,4 @@ def opp_slide(data_x, data_y, ws, ss,save=False):
 		return x,y
 
 
-# plot_data('log.csv')
+plot_data('log.csv')
