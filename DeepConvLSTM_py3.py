@@ -21,13 +21,13 @@ from pytorchtools import EarlyStopping
 
 # Define constants
 n_channels = 67 # number of sensor channels
-len_seq = 32 # Sliding window length MUST BE A MULTIPLE OF 4 +1
+len_seq = 320 # Sliding window length
 stride = 1 # Sliding window step
 num_epochs = 300 # Max no. of epochs to train for
 num_batches= -1 # No. of batches per epoc. -1 means all windows will be presented at least once, up to batchlen times per epoch (unless undersampled)
-batch_size = 1000 # Batch size / width - this many sequential batches will be processed at once
+batch_size = 100 # Batch size / width - this many sequential batches will be processed at once
 patience= 50 # Patience of early stopping routine. If criteria does not decrease in this many epochs, training is stopped.
-batchlen = 10 # No. of consecutive
+batchlen = 1 # No. of consecutive
 val_batch_size = 10000 # Batch size for validation/testing. Useful to make this as large as possible given GPU memory, to speed up validation and testing.
 test_batch_size = 10000
 
@@ -61,9 +61,9 @@ class DeepConvLSTM(nn.Module):
  		# Convolutional net
 		self.convlayer = nn.Sequential(
 			nn.Conv2d(n_channels, n_filters, (filter_size,1)),
-			# nn.MaxPool2d((pool_filter_size,1)),
+			nn.MaxPool2d((pool_filter_size,1)),
 			nn.Conv2d(n_filters, n_filters, (filter_size,1)),
-			# nn.MaxPool2d((pool_filter_size,1)),
+			nn.MaxPool2d((pool_filter_size,1)),
 			nn.Conv2d(n_filters, n_filters, (filter_size,1)),
 			nn.Conv2d(n_filters, n_filters, (filter_size,1))
 			)
@@ -112,14 +112,14 @@ class DeepConvLSTM(nn.Module):
 
 
 
-def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch_size, lr=0.01, remove_nulls=False, time=True, shuffle=True):
+def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch_size, lr=0.05, remove_nulls=False, time=True, shuffle=True):
 
 	if time:
 		print('Starting training at',datetime.now())
 		start_time=datetime.now()
 
 	opt = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4, nesterov=True) #Stochastic gradient descent optimiser with nesterov momentum
-	scheduler = torch.optim.lr_scheduler.StepLR(opt,100) # Learning rate scheduler to reduce LR every 100 epochs
+	scheduler = torch.optim.lr_scheduler.StepLR(opt,75) # Learning rate scheduler to reduce LR every 100 epochs
 
 	criterion = nn.CrossEntropyLoss()
 
@@ -140,7 +140,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 			train_losses = []
 			net.train()
 
-			h = net.init_hidden(batch_size)
+			
 
 			for batch in iterate_minibatches_batched(X_train, y_train, batch_size, len_seq, stride, shuffle=True, num_batches=num_batches, oversample=True, batchlen=batchlen):
 				
@@ -148,21 +148,24 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 				x,y= batch
 
 				inputs, targets = torch.from_numpy(x), torch.from_numpy(y)
-				
-				
+
 				if(train_on_gpu):
-					inputs, targets = inputs.cuda(), targets.cuda()
+					targets = targets.cuda()
 				
 				
 
 				opt.zero_grad() # Clear gradients in opt
 
+				h = net.init_hidden(batch_size)
 				h = tuple([each.data for each in h])  # Get rid of gradients in hidden var from previous states
 
 				output = torch.FloatTensor().cuda()
 				targets_cumulative = torch.ByteTensor().cuda()
 
 				for j,i in enumerate(inputs):
+
+					if(train_on_gpu):
+						i = i.cuda()
 
 					
 					i = i.reshape((-1, len_seq, n_channels, 1))
@@ -175,7 +178,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 				loss = criterion(output, targets_cumulative.long())
 				train_losses.append(loss.item())
 				loss.backward()
-				torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
+				# torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
 
 				opt.step()	
 
@@ -204,13 +207,16 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 					
 
 					if(train_on_gpu):
-						inputs, targets = inputs.cuda(), targets.cuda()
+						targets = targets.cuda()
 
 					val_h = net.init_hidden(inputs.size()[1])
 					val_h = tuple([each.data for each in val_h])
 
 
 					for j, i in enumerate(inputs):
+
+						if train_on_gpu:
+							i = i.cuda()
 						
 						x = x.reshape((-1, len_seq, n_channels, 1))
 						output, val_h = net(i,val_h,inputs.size()[1])
@@ -293,13 +299,16 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 			
 
 			if(train_on_gpu):
-				inputs, targets = inputs.cuda(), targets.cuda()
+				targets = targets.cuda()
 
 
 			test_h = net.init_hidden(inputs.size()[1])
 			test_h = tuple([each.data for each in test_h])
 
 			for j, i in enumerate(inputs):
+
+				if train_on_gpu:
+					i = i.cuda()
 
 				x = x.reshape((-1, len_seq, n_channels, 1))
 
@@ -333,7 +342,7 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 if __name__ == '__main__':
 
 
-	X_train,y_train = load_opp_runs('train',15,len_seq, stride)
+	X_train,y_train = load_opp_runs('train',12,len_seq, stride)
 	X_val, y_val = load_opp_runs('val',3,len_seq, stride)
 
 	net = DeepConvLSTM()
@@ -354,7 +363,7 @@ if __name__ == '__main__':
 
 	print('Loading test data')
 
-	X_test, y_test = load_opp_runs('test',6,len_seq, stride)
+	X_test, y_test = load_opp_runs('test',5,len_seq, stride)
 
 	print('Testing and saving fully trained model.')
 

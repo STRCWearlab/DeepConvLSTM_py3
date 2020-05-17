@@ -64,12 +64,12 @@ def iterate_minibatches_batched(inputs, targets, batchsize, seq_len, stride, shu
 				
 				if len(xs) == batchsize:
 					
-					yield np.asarray(xs).transpose(1,0,2,3).squeeze(),np.asarray(ys).transpose().squeeze()
+					yield np.asarray(xs).transpose(1,0,2,3),np.asarray(ys).transpose()
 					xs = []
 					ys = []
 
 		if val == True:
-			yield np.asarray(xs).transpose(1,0,2,3).squeeze(),np.asarray(ys).transpose().squeeze()
+			yield np.asarray(xs).transpose(1,0,2,3),np.asarray(ys).transpose()
 			xs = []
 			ys = []
 
@@ -173,7 +173,7 @@ def load_opp_runs(name,num_files,len_seq, stride):
 	ys = []
 
 	for i in range(num_files):
-		X, y = load_dataset('/data/{}_data_{}'.format(name,i))
+		X, y = load_dataset('data/{}_data_{}'.format(name,i))
 		X, y = opp_slide(X, y, len_seq, stride, save=False)
 		Xs.append(X)
 		ys.append(y)
