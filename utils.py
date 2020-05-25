@@ -173,7 +173,7 @@ def load_opp_runs(name,num_files,len_seq, stride):
 	ys = []
 
 	for i in range(num_files):
-		X, y = load_dataset('/data/{}_data_{}'.format(name,i))
+		X, y = load_dataset('data/{}_data_{}'.format(name,i))
 		X, y = opp_slide(X, y, len_seq, stride, save=False)
 		Xs.append(X)
 		ys.append(y)

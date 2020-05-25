@@ -333,7 +333,7 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 if __name__ == '__main__':
 
 
-	X_train,y_train = load_opp_runs('train',15,len_seq, stride)
+	X_train,y_train = load_opp_runs('train',12,len_seq, stride)
 	X_val, y_val = load_opp_runs('val',3,len_seq, stride)
 
 	net = DeepConvLSTM()
@@ -354,7 +354,7 @@ if __name__ == '__main__':
 
 	print('Loading test data')
 
-	X_test, y_test = load_opp_runs('test',6,len_seq, stride)
+	X_test, y_test = load_opp_runs('test',5,len_seq, stride)
 
 	print('Testing and saving fully trained model.')
 
