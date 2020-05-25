@@ -300,8 +300,8 @@ def get_args():
     parser = argparse.ArgumentParser(
         description='Preprocess OPPORTUNITY dataset')
     # Add arguments
-    parser.add_argument(
-        '-i', '--input', type=str, help='OPPORTUNITY zip file', required=True)
+    # parser.add_argument(
+    #     '-i', '--input', type=str, help='OPPORTUNITY zip file', required=True)
     parser.add_argument(
         '-s','--subject', type=int, help='Subject to leave out for testing', required=True)
     parser.add_argument(
@@ -309,7 +309,7 @@ def get_args():
     # Array for all arguments passed to script
     args = parser.parse_args()
     # Assign args to variables
-    dataset = args.input
+    dataset = 'data/raw/OpportunityUCIDataset.zip'
     subject = args.subject
     label = args.task
     # Return all variable values
