@@ -24,72 +24,6 @@ def init_weights(m):
 		m.bias.data.fill_(0)
 
 
-
-def iterate_minibatches_batched(inputs, targets, batchsize, seq_len, stride, shuffle=True, num_batches=-1, oversample=False,batchlen=10,val=False):
-
-	step = lambda x : [int(x+i*seq_len/stride) for i in range(batchlen)]
-
-	if shuffle and batchlen > 0:
-		# starts = [np.array([[x for x in range(j*(seq_len*batchlen+seq_len),(j*seq_len*batchlen)+(j+1)*seq_len)] for j in range(0,int((len(inputs)-seq_len)/(seq_len*batchlen+seq_len)))]) for inputs in inputs]
-		starts = [[x for x in range(0,len(i)-int((batchlen*seq_len)+1/stride))] for i in inputs]
-
-		for i in range(1,len(starts)):
-			starts[i] = [x+1+starts[i-1][-1]+int((batchlen*seq_len)+1/stride) for x in starts[i]]
-
-
-		starts = [val for sublist in starts for val in sublist]
-
-
-		inputs = [val for sublist in inputs for val in sublist]
-		targets = [val for sublist in targets for val in sublist]
-
-		# np.random.shuffle(starts)
-
-
-		xs = []
-		ys = []
-
-		if num_batches != -1:
-			num_batches = num_batches*batchsize
-
-		for start in starts[0:num_batches]:
-			x = [inputs[i] for i in step(start)]
-			y = [targets[i] for i in step(start)]
-
-			if oversample and (all(y) == 0) and (np.random.randint(10) < 5):
-				pass
-			else:
-				xs.append(x)
-				ys.append(y)
-				
-				if len(xs) == batchsize:
-					
-					yield np.asarray(xs).transpose(1,0,2,3).squeeze(),np.asarray(ys).transpose().squeeze()
-					xs = []
-					ys = []
-
-		if val == True:
-			yield np.asarray(xs).transpose(1,0,2,3).squeeze(),np.asarray(ys).transpose().squeeze()
-			xs = []
-			ys = []
-
-	# elif shuffle:
-	# 	inputs = [val for sublist in inputs for val in sublist]
-	# 	targets = [val for sublist in targets for val in sublist]
-
-	# 	index = [i for i in range(len(inputs))]
-
-	# 	np.random.shuffle(index)
-
-	# 	np.array(index).reshape(batchsize,-1)
-
-	# 	for batch in index:
-	# 		yield [inputs[i] for i in batch], [targets[i] for i in batch]
-
-	else:
-		for start in range(int(len(inputs) - seq_len*batchsize + 1)):
-			yield inputs[step(start)], targets[step(start)]
-
 def iterate_minibatches(inputs, targets, batchsize, shuffle=True, num_batches=-1):
 
 	batch = lambda j : [x for x in range(j*batchsize,(j+1)*batchsize)]
@@ -98,7 +32,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=True, num_batches=-1
 
 
 	if shuffle:
-		# np.random.shuffle(batches)
+		np.random.shuffle(batches)
 		for i in batches[0:num_batches]:
 			yield np.array([inputs[i] for i in batch(i)]), np.array([targets[i] for i in batch(i)])
 
@@ -208,4 +142,64 @@ def opp_slide(data_x, data_y, ws, ss,save=False):
 		return x,y
 
 
-plot_data('log.csv')
+def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, shuffle=True, num_batches=-1, oversample=False,batchlen=10,val=False):
+
+	assert (seq_len/stride).is_integer(), 'in order to generate sequential batches, the sliding window length must be divisible by the step.'
+
+	starts = [[x for x in range(0,len(i)-int(((batchlen*seq_len)+1)/stride))] for i in inputs]
+
+	for i in range(1,len(starts)):
+		starts[i] = [x+1+starts[i-1][-1]+int(((batchlen*seq_len)+1)/stride) for x in starts[i]]
+
+
+	starts = [val for sublist in starts for val in sublist]
+	inputs = [val for sublist in inputs for val in sublist]
+	targets = [val for sublist in targets for val in sublist]
+
+	
+
+	if batchlen > 1:
+
+		step = lambda x : [int(x+i*seq_len/stride) for i in range(batchlen)]
+
+		if shuffle:
+			np.random.shuffle(starts)
+
+		batches = np.empty((batchsize,batchlen),dtype=np.int32)
+
+		if num_batches != -1:
+			num_batches = int(num_batches*batchsize)
+
+
+		for i,start in enumerate(starts[0:num_batches]):
+
+			batch = np.array([i for i in step(start)],dtype=np.int32)
+
+
+			if oversample and not any([targets[i] for i in batch]) and np.random.randint(10) < 8:
+				pass
+			else:
+				batches[i%batchsize] = batch
+				
+				if i%batchsize == batchsize-1:
+
+					batches = batches.transpose()
+					
+					for pos,batch in enumerate(batches):
+						yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
+						batches = np.empty((batchsize,batchlen),dtype=np.int32)
+
+		if val == True and num_batches == -1:
+			for batch in batches:
+				yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
+
+
+	elif batchlen == 1:
+
+		if shuffle:
+			np.random.shuffle(starts)
+
+		batch = lambda j : [x for x in range(j,j+batchsize)]
+
+		for j in starts[0:num_batches]:
+			yield np.array([inputs[i] for i in batch(j)]), np.array([targets[i] for i in batch(j)])
