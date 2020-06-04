@@ -11,7 +11,7 @@ from pandas import Series
 
 
 # Hardcoded number of sensor channels employed in the OPPORTUNITY challenge
-NB_SENSOR_CHANNELS = 67
+NB_SENSOR_CHANNELS = 113
 
 def select_subject(test):
 
@@ -40,31 +40,31 @@ NORM_MAX_THRESHOLDS = [3000,   3000,   3000,   3000,   3000,   3000,   3000,   3
                        3000,   3000,   3000,   3000,   3000,   3000,   3000,   3000,   3000,
                        3000,   3000,   3000,   3000,   3000,   3000,   3000,   3000,   3000,
                        3000,   3000,   3000,   3000,   3000,   3000,   3000,   3000,   3000,
-                       3000,   3000,   3000,   10000,  10000,  10000,#  1500,   1500,   1500,
-                       3000,   3000,   3000,   10000,  10000,  10000,#  1500,   1500,   1500,
-                       3000,   3000,   3000,   10000,  10000,  10000,#  1500,   1500,   1500,
-                       3000,   3000,   3000,   10000,  10000,  10000,#  1500,   1500,   1500,
-                       3000,   3000,   3000,   10000,  10000,  10000,#  1500,   1500,   1500,
-                       #250,    25,     200,    5000,   5000,   5000,   5000,   5000,   5000,
-                       10000,  10000,  10000,  10000,  10000,  10000,  #250,    250,    25,
-                       #200,    5000,   5000,   5000,   5000,   5000,   5000,   
+                       3000,   3000,   3000,   10000,  10000,  10000,  1500,   1500,   1500,
+                       3000,   3000,   3000,   10000,  10000,  10000,  1500,   1500,   1500,
+                       3000,   3000,   3000,   10000,  10000,  10000,  1500,   1500,   1500,
+                       3000,   3000,   3000,   10000,  10000,  10000,  1500,   1500,   1500,
+                       3000,   3000,   3000,   10000,  10000,  10000,  1500,   1500,   1500,
+                       250,    25,     200,    5000,   5000,   5000,   5000,   5000,   5000,
+                       10000,  10000,  10000,  10000,  10000,  10000,  250,    250,    25,
+                       200,    5000,   5000,   5000,   5000,   5000,   5000,   
                        10000,  10000,
-                       10000,  10000,  10000,  10000] # 250, ]
+                       10000,  10000,  10000,  10000 ,  250 ]
 
 NORM_MIN_THRESHOLDS = [-3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,
                        -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,
                        -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,
                        -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,  -3000,
-                       -3000,  -3000,  -3000,  -10000, -10000, -10000,# -1000,  -1000,  -1000,
-                       -3000,  -3000,  -3000,  -10000, -10000, -10000,# -1000,  -1000,  -1000,
-                       -3000,  -3000,  -3000,  -10000, -10000, -10000,# -1000,  -1000,  -1000,
-                       -3000,  -3000,  -3000,  -10000, -10000, -10000,# -1000,  -1000,  -1000,
-                       -3000,  -3000,  -3000,  -10000, -10000, -10000,# -1000,  -1000,  -1000,
-                       #-250,   -100,   -200,   -5000,  -5000,  -5000,  -5000,  -5000,  -5000,
-                       -10000, -10000, -10000, -10000, -10000, -10000,# -250,   -250,   -100,
-                       #-200,   -5000,  -5000,  -5000,  -5000,  -5000,  -5000,
+                       -3000,  -3000,  -3000,  -10000, -10000, -10000, -1000,  -1000,  -1000,
+                       -3000,  -3000,  -3000,  -10000, -10000, -10000, -1000,  -1000,  -1000,
+                       -3000,  -3000,  -3000,  -10000, -10000, -10000, -1000,  -1000,  -1000,
+                       -3000,  -3000,  -3000,  -10000, -10000, -10000, -1000,  -1000,  -1000,
+                       -3000,  -3000,  -3000,  -10000, -10000, -10000, -1000,  -1000,  -1000,
+                       -250,   -100,   -200,   -5000,  -5000,  -5000,  -5000,  -5000,  -5000,
+                       -10000, -10000, -10000, -10000, -10000, -10000, -250,   -250,   -100,
+                       -200,   -5000,  -5000,  -5000,  -5000,  -5000,  -5000,
                         -10000, -10000,
-                       -10000, -10000, -10000, -10000]# -250, ]
+                       -10000, -10000, -10000, -10000 ,-250 ]
 
 
 def select_columns_opp(data):
@@ -76,13 +76,22 @@ def select_columns_opp(data):
         Selection of features
     """
 
-    #                     included-excluded
-    features_delete = np.arange(43, 50) #Exclude quats and magnetometer reading from BACK
-    features_delete = np.concatenate([features_delete, np.arange(56, 63)]) #Exclude quats and magnetometer reading from RUA
-    features_delete = np.concatenate([features_delete, np.arange(69, 76)]) #Exclude quats and magnetometer reading from RLA
-    features_delete = np.concatenate([features_delete, np.arange(82, 89)]) #Exclude quats and magnetometer reading from LUA
-    features_delete = np.concatenate([features_delete, np.arange(95, 134)]) #Exclude quats and magnetometer reading from LLA and shoes
-    features_delete = np.concatenate([features_delete, np.arange(134, 243)]) #Exclude ambieant item sensors
+    ## ACC/GYRO ONLY
+    # features_delete = np.arange(43, 50) #Exclude quats and magnetometer reading from BACK
+    # features_delete = np.concatenate([features_delete, np.arange(56, 63)]) #Exclude quats and magnetometer reading from RUA
+    # features_delete = np.concatenate([features_delete, np.arange(69, 76)]) #Exclude quats and magnetometer reading from RLA
+    # features_delete = np.concatenate([features_delete, np.arange(82, 89)]) #Exclude quats and magnetometer reading from LUA
+    # features_delete = np.concatenate([features_delete, np.arange(95, 134)]) #Exclude quats and magnetometer reading from LLA and shoes
+    # features_delete = np.concatenate([features_delete, np.arange(134, 243)]) #Exclude ambient item sensors
+    # features_delete = np.concatenate([features_delete, np.arange(244, 249)])
+
+    ## ACC/GYRO/MAG/QUAT ONLY
+    features_delete = np.arange(46, 50)
+    features_delete = np.concatenate([features_delete, np.arange(59, 63)])
+    features_delete = np.concatenate([features_delete, np.arange(72, 76)])
+    features_delete = np.concatenate([features_delete, np.arange(85, 89)])
+    features_delete = np.concatenate([features_delete, np.arange(98, 102)])
+    features_delete = np.concatenate([features_delete, np.arange(134, 243)])
     features_delete = np.concatenate([features_delete, np.arange(244, 249)])
     return np.delete(data, features_delete, 1)
 
@@ -126,9 +135,9 @@ def divide_x_y(data, label):
     if label not in ['locomotion', 'gestures']:
             raise RuntimeError("Invalid label: '%s'" % label)
     if label == 'locomotion':
-        data_y = data[:, NB_SENSOR_CHANNELS]  # Locomotion label
+        data_y = data[:, NB_SENSOR_CHANNELS+1]  # Locomotion label
     elif label == 'gestures':
-        data_y = data[:, NB_SENSOR_CHANNELS+1]  # Gestures label
+        data_y = data[:, NB_SENSOR_CHANNELS+2]  # Gestures label
 
     return data_x, data_y
 
@@ -261,36 +270,36 @@ def generate_data(dataset, test_sub, label):
     for i,filename in enumerate(train_files):
         try:
             data = np.loadtxt(BytesIO(zf.read(filename)))
-            print('... file {0}'.format(filename))
+            print('... file {} -> train_data_{}'.format(filename,i))
             x, y = process_dataset_file(data, label)
             with open('data/train_data_{}'.format(i),'wb') as f:
                 cp.dump((x,y),f)
         except KeyError:
-            print('ERROR: Did not find {0} in zip file'.format(filename))
+            print('ERROR: Did not find {} in zip file'.format(filename))
 
     # Generate validation files
     print('Generating validation files')
     for i,filename in enumerate(val_files):
         try:
             data = np.loadtxt(BytesIO(zf.read(filename)))
-            print('... file {0}'.format(filename))
+            print('... file {} -> val_data_{}'.format(filename,i))
             x, y = process_dataset_file(data, label)
             with open('data/val_data_{}'.format(i),'wb') as f:
                 cp.dump((x,y),f)
         except KeyError:
-            print('ERROR: Did not find {0} in zip file'.format(filename))
+            print('ERROR: Did not find {} in zip file'.format(filename))
 
     # Generate testing files
     print('Generating testing files')
     for i,filename in enumerate(test_files):
         try:
             data = np.loadtxt(BytesIO(zf.read(filename)))
-            print('... file {0}'.format(filename))
+            print('... file {} -> test_data_{}'.format(filename,i))
             x, y = process_dataset_file(data, label)
             with open('data/test_data_{}'.format(i),'wb') as f:
                 cp.dump((x,y),f)
         except KeyError:
-            print('ERROR: Did not find {0} in zip file'.format(filename))
+            print('ERROR: Did not find {} in zip file'.format(filename))
 
 
 
