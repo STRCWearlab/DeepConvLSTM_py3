@@ -5,6 +5,7 @@ fullytrained.pt
 *.sh
 preprocess_data_*
 
+
 *.sublime_workspace
 *.sublime_project
 
@@ -12,3 +13,4 @@ docs/
 data/
 Results/
 __pycache__/
+.ipynb_checkpoints/
