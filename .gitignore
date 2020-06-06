@@ -6,8 +6,8 @@ fullytrained.pt
 preprocess_data_*
 
 
-*.sublime_workspace
-*.sublime_project
+*.sublime-workspace
+*.sublime-project
 
 docs/
 data/
