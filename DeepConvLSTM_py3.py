@@ -124,8 +124,13 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 	print(len(train_stats),'classes with distribution',train_stats)
 	print('Validation set statistics:')
 	print(len(val_stats),'classes with distribution',val_stats)
+
+	weights = torch.tensor([max(train_stats)/i for i in train_stats],dtype=torch.float)
+
+	if train_on_gpu:
+		weights = weights.cuda()
 	
-	criterion = nn.CrossEntropyLoss(weight=torch.tensor([max(train_stats)/i for i in train_stats],dtype=torch.float).cuda()) # Prepare weighted cross entropy for training and validation.
+	criterion = nn.CrossEntropyLoss(weight=weights) # Prepare weighted cross entropy for training and validation.
 	val_criterion = nn.CrossEntropyLoss()
 
 	early_stopping = EarlyStopping(patience=patience, verbose=False)
