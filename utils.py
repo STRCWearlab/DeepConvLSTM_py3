@@ -3,12 +3,12 @@ from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
-from memory_profiler import profile
 import time
 import itertools
 import _pickle as cp
 from sliding_window import sliding_window
 import os
+import glob
 
 def init_weights(m):
 	if type(m) == nn.LSTM:
@@ -41,7 +41,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=True, num_batches=-1
 			yield np.array([inputs[i] for i in batch(i)]),np.array( [targets[i] for i in batch(i)])
 
 
-def plot_data(logname='log.csv',save_fig='LASGFNO'):
+def plot_data(logname='log.csv',save_fig=False):
 	train_loss_plot = []
 	val_loss_plot = []
 	acc_plot = []
@@ -102,12 +102,16 @@ def plot_data(logname='log.csv',save_fig='LASGFNO'):
 		plt.show()
 
 	
-def load_opp_runs(name,num_files,len_seq, stride):
+def load_opp_runs(name,len_seq,stride):
 	Xs = []
 	ys = []
 
-	for i in range(num_files):
-		X, y = load_dataset('data/{}_data_{}'.format(name,i))
+	## Use glob module and wildcard to build a list of files to load from data directory
+	path = "data/{}_data_*".format(name)
+	data = glob.glob(path)
+
+	for file in data:
+		X, y = load_dataset(file)
 		X, y = opp_slide(X, y, len_seq, stride, save=False)
 		Xs.append(X)
 		ys.append(y)
@@ -174,7 +178,7 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, shuffle=
 		for i,start in enumerate(starts[0:num_batches]):
 
 			batch = np.array([i for i in step(start)],dtype=np.int32)
-
+			
 
 			if oversample and not any([targets[i] for i in batch]) and np.random.randint(10) < 8:
 				pass
@@ -190,7 +194,10 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, shuffle=
 						batches = np.empty((batchsize,batchlen),dtype=np.int32)
 
 		if val == True and num_batches == -1:
-			for batch in batches:
+			
+			batches = batches[0:i%batchsize]
+			batches = batches.transpose()
+			for pos,batch in enumerate(batches):
 				yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
 
 
@@ -202,4 +209,5 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, shuffle=
 		batch = lambda j : [x for x in range(j,j+batchsize)]
 
 		for j in starts[0:num_batches]:
-			yield np.array([inputs[i] for i in batch(j)]), np.array([targets[i] for i in batch(j)])
+			yield np.array([inputs[i] for i in batch(j)]), np.array([targets[i] for i in batch(j)]), 0
+
