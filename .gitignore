@@ -1,5 +1,14 @@
 log*
+*.png
+checkpoint.pt
+fullytrained.pt
+*.sh
+preprocess_data_*
 
+*.sublime_workspace
+*.sublime_project
+
+docs/
 data/
 Results/
 __pycache__/
