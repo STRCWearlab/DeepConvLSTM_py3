@@ -11,6 +11,7 @@ import csv
 import seaborn as sn
 
 # Define constants
+
 n_channels = 113 # number of sensor channels
 len_seq = 24 # Sliding window length
 stride = 8 # Sliding window step
@@ -25,8 +26,6 @@ lr = 0.0001 # Initial (max) learning rate
 num_batches_val = 1 # How many batches should we validate on each epoch
 lr_step = 100
 
-
-# Class names for opportunity dataset
 opp_class_names = ['Null','Open Door 1','Open Door 2','Close Door 1','Close Door 2','Open Fridge',
 'Close Fridge','Open Dishwasher','Close Dishwasher','Open Drawer 1','Close Drawer 1','Open Drawer 2','Close Drawer 2',
 'Open Drawer 3','Close Drawer 3','Clean Table','Drink from Cup','Toggle Switch']
@@ -103,15 +102,17 @@ class DeepConvLSTM(nn.Module):
 		return hidden
 
 
+
 def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch_size, lr=lr, time=True, shuffle=True):
+
 
 	if time:
 		print('Starting training at',datetime.now())
 		start_time=datetime.now()
+
 	weight_decay = 1e-5*lr*batch_size*(50/batchlen)
 	opt = torch.optim.Adam(net.parameters(),lr=lr,weight_decay=weight_decay,amsgrad=True)
 	scheduler = torch.optim.lr_scheduler.StepLR(opt,lr_step) # Learning rate scheduler to reduce LR every 100 epochs
-	
 
 	if(train_on_gpu):
 		net.cuda()
@@ -137,25 +138,28 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 			net.train() # Setup network for training
 
 
+
 			for batch in iterate_minibatches_2D(X_train, y_train, batch_size, len_seq, stride, shuffle=shuffle, num_batches=num_batches, oversample=False, batchlen=batchlen, val=True):
 
 				x,y,pos= batch
 
 
-				inputs, targets = torch.from_numpy(x), torch.from_numpy(y)
-				
+				inputs, targets = torch.from_numpy(x), torch.from_numpy(y)				
 
 				opt.zero_grad()  # Clear gradients in optimizer
+
 
 				if pos==0:
 					h = net.init_hidden(inputs.size()[0])
 
 				h = tuple([each.data for each in h])  # Get rid of gradients in hidden and cell states
 
+        
 				if train_on_gpu:
 					inputs,targets = inputs.cuda(),targets.cuda()
 				
 				output, h = net(inputs,h,inputs.size()[0]) # Run inputs through network
+
 
 				loss = criterion(output, targets.long())
 				
@@ -191,6 +195,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 	
 					val_loss = val_criterion(output, targets.long())
 					val_losses.append(val_loss.item())
+
 
 					top_p, top_class = output.topk(1,dim=1)
 					top_classes.extend([top_class.item() for top_class in top_class.cpu()])
@@ -261,10 +266,9 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 			if(train_on_gpu):
 				targets,inputs = targets.cuda(),inputs.cuda()
 
+
 			if pos == 0:
 				test_h = net.init_hidden(inputs.size()[0])
-
-
 
 			output, test_h = net(inputs,test_h,inputs.size()[0])
 
