@@ -12,6 +12,7 @@ numpy = "*"
 pandas = "*"
 scikit-learn = "*"
 seaborn = "*"
+jupyter = "*"
 
 [requires]
 python_version = "3.6"
