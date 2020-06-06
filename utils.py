@@ -211,7 +211,7 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batc
 					yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
 					batches = np.empty((batchsize,batchlen),dtype=np.int32)
 
-		if val == True and num_batches == -1:
+		if drop_last == False and num_batches == -1:
 			
 			batches = batches[0:i%batchsize]
 			batches = batches.transpose()
