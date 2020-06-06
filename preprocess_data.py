@@ -15,19 +15,31 @@ NB_SENSOR_CHANNELS = 113
 
 def select_subject(test):
 
-    train = ['1','2','3','4']
-    runs = ['Drill','ADL1','ADL2','ADL3','ADL4']
-    val_runs = ['ADL4']
+    ## Test set for the opportunity challenge.
+    if test == 'challenge':
+        train_runs = ['S1-Drill','S1-ADL1','S1-ADL2','S1-ADL3','S1-ADL4','S1-ADL5','S2-Drill','S2-ADL1','S2-ADL2','S3-Drill','S3-ADL1','S3-ADL2']
+        val_runs = ['S2-ADL3','S3-ADL3']
+        test_runs = ['S2-ADL4','S2-ADL5','S3-ADL4','S3-ADL5']
+
+        train_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in train_runs]
+        val_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in val_runs]
+        test_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in test_runs]
+       
 
 
+    else: 
 
-    test_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(test,run) for run in runs]
+        train = ['1','2','3','4']
+        runs = ['Drill','ADL1','ADL2','ADL3','ADL4']
+        val_runs = ['ADL4']
 
-    train.remove(str(test))
-    runs.remove(val_runs[0])
+        test_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(test,run) for run in runs]
 
-    train_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in runs]
-    val_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in val_runs]
+        train.remove(test)
+        runs.remove(val_runs[0])
+
+        train_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in runs]
+        val_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in val_runs]
 
     return train_files, test_files, val_files
 
@@ -262,7 +274,9 @@ def generate_data(dataset, test_sub, label):
     try:
         os.mkdir('data')
     except FileExistsError:
-        pass
+        for file in os.scandir('data'):
+            if 'data' in file.name:
+                os.remove(file.path)
 
 
     # Generate training files
@@ -312,7 +326,7 @@ def get_args():
     # parser.add_argument(
     #     '-i', '--input', type=str, help='OPPORTUNITY zip file', required=True)
     parser.add_argument(
-        '-s','--subject', type=int, help='Subject to leave out for testing', required=True)
+        '-s','--subject', type=str, help='Subject to leave out for testing', required=True)
     parser.add_argument(
         '-t', '--task', type=str.lower, help='Type of activities to be recognized', default="gestures", choices = ["gestures", "locomotion"], required=False)
     # Array for all arguments passed to script
