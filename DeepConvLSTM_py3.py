@@ -13,8 +13,8 @@ import seaborn as sn
 # Define constants
 
 n_channels = 113 # number of sensor channels
-len_seq = 24 # Sliding window length
-stride = 8 # Sliding window step
+len_seq = 20 # Sliding window length
+stride = 1 # Sliding window step
 num_epochs = 300 # Max no. of epochs to train for
 num_batches= 5 # No. of training batches per epoch. -1 means all windows will be presented at least once, up to batchlen times per epoch (unless undersampled)
 batch_size = 1000 # Batch size / width - this many windows of data will be processed at once
@@ -144,7 +144,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 
 
 
-			for batch in iterate_minibatches_2D(X_train, y_train, batch_size, len_seq, stride, shuffle=shuffle, num_batches=num_batches, oversample=False, batchlen=batchlen, val=True):
+			for batch in iterate_minibatches_2D(X_train, y_train, batch_size, len_seq, stride, shuffle=shuffle, num_batches=num_batches, batchlen=batchlen, drop_last=True):
 
 				x,y,pos= batch
 
@@ -181,7 +181,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 			targets_cumulative = []
 
 			with torch.no_grad():
-				for batch in iterate_minibatches_2D(X_val, y_val, val_batch_size, len_seq, stride, shuffle=shuffle, num_batches=num_batches_val, batchlen=batchlen, val=True):
+				for batch in iterate_minibatches_2D(X_val, y_val, val_batch_size, len_seq, stride, shuffle=shuffle, num_batches=num_batches_val, batchlen=batchlen, drop_last=False):
 					
 
 					x,y,pos=batch
@@ -260,7 +260,7 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 
 	with torch.no_grad():
 			
-		for batch in iterate_minibatches_2D(X_test, y_test, test_batch_size, len_seq, stride, shuffle=True, num_batches=-1, batchlen=batchlen, val=True):
+		for batch in iterate_minibatches_2D(X_test, y_test, test_batch_size, len_seq, stride, shuffle=True, num_batches=-1, batchlen=batchlen, drop_last=False):
 				
 			x,y,pos=batch
 
