@@ -145,7 +145,28 @@ def opp_slide(data_x, data_y, ws, ss,save=False):
 		return x,y
 
 
-def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, shuffle=True, num_batches=-1, oversample=False,batchlen=10,val=False):
+def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batches=10, batchlen=50, drop_last=True, shuffle=True):
+	"""
+	Args:
+		inputs (array): Dataset sensor channels, a stacked array of runs, after a sliding window has been applied.
+
+		targets (array): Dataset labels, a stacked array of labels corresponding to the windows in inputs.
+
+		batchsize (int): Number of windows in each batch.
+
+		seq_len (int): Length of sliding window sequence.
+
+		stride (int): Size of sliding window step.
+
+		num_batches (int): Number of metabatches to return before finishing the epoch.
+				Default: 10
+		batchlen (int): Number of contiguous windows per batch. 
+				Default: 50
+		drop_last (bool): Whether to drop the last incomplete batch when dataset does not divide neatly by batchsize.
+				Default: True
+		shuffle (bool): Determines whether to shuffle the batches or iterate through sequentially.
+				Default: True
+	"""
 
 	assert (seq_len/stride).is_integer(), 'in order to generate sequential batches, the sliding window length must be divisible by the step.'
 
@@ -171,16 +192,15 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, shuffle=
 		batches = np.empty((batchsize,batchlen),dtype=np.int32)
 
 		if num_batches != -1:
-			num_batches = int(num_batches*batchsize)
+			num_batches = int(num_batches*batchsize) # Convert num_batches to number of metabatches.
+			if num_batches > len(starts):
+				num_batches = -1
 
 
 		for i,start in enumerate(starts[0:num_batches]):
 
 			batch = np.array([i for i in step(start)],dtype=np.int32)
 			
-
-			if oversample and not any([targets[i] for i in batch]) and np.random.randint(10) < 8:
-				pass
 			else:
 				batches[i%batchsize] = batch
 				
