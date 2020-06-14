@@ -17,8 +17,8 @@ def select_subject(test):
 
     ## Test set for the opportunity challenge.
     if test == 'challenge':
-        train_runs = ['S1-Drill','S1-ADL1','S1-ADL2','S1-ADL3','S1-ADL4','S1-ADL5','S2-Drill','S2-ADL1','S2-ADL2','S3-Drill','S3-ADL1','S3-ADL2']
-        val_runs = ['S2-ADL3','S3-ADL3']
+        train_runs = ['S1-Drill','S1-ADL1','S1-ADL2','S1-ADL3','S2-Drill','S2-ADL1','S2-ADL2','S3-Drill','S3-ADL1','S3-ADL2','S2-ADL3','S3-ADL3']
+        val_runs = ['S1-ADL4','S1-ADL5']
         test_runs = ['S2-ADL4','S2-ADL5','S3-ADL4','S3-ADL5']
 
         train_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in train_runs]
