@@ -13,13 +13,13 @@ def init_weights(m):
 	if type(m) == nn.LSTM:
 		for name, param in m.named_parameters():
 			if 'weight_ih' in name:
-				torch.nn.init.orthogonal_(param.data)
+				torch.nn.init.kaiming_normal_(param.data)
 			elif 'weight_hh' in name:
-				torch.nn.init.orthogonal_(param.data)
+				torch.nn.init.kaiming_normal_(param.data)
 			elif 'bias' in name:
 				param.data.fill_(0)
 	elif type(m) == nn.Conv1d or type(m) == nn.Linear:
-		torch.nn.init.orthogonal_(m.weight)
+		torch.nn.init.kaiming_normal_(m.weight)
 		m.bias.data.fill_(0)
 
 
@@ -101,7 +101,7 @@ def plot_data(logname='log.csv',save_fig=False):
 		plt.show()
 
 	
-def load_opp_runs(name,len_seq,stride):
+def load_data(name,len_seq,stride):
 	Xs = []
 	ys = []
 
@@ -111,7 +111,7 @@ def load_opp_runs(name,len_seq,stride):
 
 	for file in data:
 		X, y = load_dataset(file)
-		X, y = opp_slide(X, y, len_seq, stride, save=False)
+		X, y = slide(X, y, len_seq, stride, save=False)
 		Xs.append(X)
 		ys.append(y)
 
@@ -133,7 +133,7 @@ def load_dataset(filename):
 
 	return X, y
 
-def opp_slide(data_x, data_y, ws, ss,save=False):
+def slide(data_x, data_y, ws, ss,save=False):
 	x = sliding_window(data_x, (ws,data_x.shape[1]),(ss,1))
 	y = np.asarray([i[-1] for i in sliding_window(data_y, ws, ss)]).astype(np.uint8)
 
@@ -182,52 +182,42 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batc
 
 	
 
-	if batchlen > 1:
-
-		step = lambda x : [int(x+i*seq_len/stride) for i in range(batchlen)]
-
-		if shuffle:
-			np.random.shuffle(starts)
-
-		batches = np.empty((batchsize,batchlen),dtype=np.int32)
-
-		if num_batches != -1:
-			num_batches = int(num_batches*batchsize) # Convert num_batches to number of metabatches.
-			if num_batches > len(starts):
-				num_batches = -1
 
 
-		for i,start in enumerate(starts[0:num_batches]):
+	step = lambda x : [int(x+i*seq_len/stride) for i in range(batchlen)]
 
-			batch = np.array([i for i in step(start)],dtype=np.int32)
-			
-			batches[i%batchsize] = batch
-			
-			if i%batchsize == batchsize-1:
+	if shuffle:
+		np.random.shuffle(starts)
 
-				batches = batches.transpose()
-				
-				for pos,batch in enumerate(batches):
-					yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
-					batches = np.empty((batchsize,batchlen),dtype=np.int32)
+	batches = np.empty((batchsize,batchlen),dtype=np.int32)
 
-		if drop_last == False and num_batches == -1:
-			
-			batches = batches[0:i%batchsize]
+	if num_batches != -1:
+		num_batches = int(num_batches*batchsize) # Convert num_batches to number of metabatches.
+		if num_batches > len(starts):
+			num_batches = -1
+
+
+	for i,start in enumerate(starts[0:num_batches]):
+
+		batch = np.array([i for i in step(start)],dtype=np.int32)
+		
+		batches[i%batchsize] = batch
+		
+		if i%batchsize == batchsize-1:
+
 			batches = batches.transpose()
+			
 			for pos,batch in enumerate(batches):
 				yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
+				batches = np.empty((batchsize,batchlen),dtype=np.int32)
 
 
-	elif batchlen == 1:
-
-		if shuffle:
-			np.random.shuffle(starts)
-
-		batch = lambda j : [x for x in range(j,j+batchsize)]
-
-		for j in starts[0:num_batches]:
-			yield np.array([inputs[i] for i in batch(j)]), np.array([targets[i] for i in batch(j)]), 0
+	if drop_last == False and num_batches == -1:
+		
+		batches = batches[0:i%batchsize]
+		batches = batches.transpose()
+		for pos,batch in enumerate(batches):
+			yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
 
 
 class EarlyStopping:
