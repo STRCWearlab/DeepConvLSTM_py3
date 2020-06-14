@@ -13,33 +13,58 @@ from pandas import Series
 # Hardcoded number of sensor channels employed in the OPPORTUNITY challenge
 NB_SENSOR_CHANNELS = 113
 
-def select_subject(test):
+def select_subject(dataset_name, test):
 
-    ## Test set for the opportunity challenge.
-    if test == 'challenge':
-        train_runs = ['S1-Drill','S1-ADL1','S1-ADL2','S1-ADL3','S2-Drill','S2-ADL1','S2-ADL2','S3-Drill','S3-ADL1','S3-ADL2','S2-ADL3','S3-ADL3']
-        val_runs = ['S1-ADL4','S1-ADL5']
-        test_runs = ['S2-ADL4','S2-ADL5','S3-ADL4','S3-ADL5']
+    if dataset_name == 'Opportunity':
+        ## Test set for the opportunity challenge.
+        if test == 'challenge':
+            train_runs = ['S1-Drill','S1-ADL1','S1-ADL2','S1-ADL3','S2-Drill','S2-ADL1','S2-ADL2','S3-Drill','S3-ADL1','S3-ADL2','S2-ADL3','S3-ADL3']
+            val_runs = ['S1-ADL4','S1-ADL5']
+            test_runs = ['S2-ADL4','S2-ADL5','S3-ADL4','S3-ADL5']
 
-        train_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in train_runs]
-        val_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in val_runs]
-        test_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in test_runs]
-       
+            train_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in train_runs]
+            val_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in val_runs]
+            test_files = ['OpportunityUCIDataset/dataset/{}.dat'.format(run) for run in test_runs]
+           
 
 
-    else: 
+        else: 
 
-        train = ['1','2','3','4']
-        runs = ['Drill','ADL1','ADL2','ADL3','ADL4']
-        val_runs = ['ADL4']
+            train = ['1','2','3','4']
+            runs = ['Drill','ADL1','ADL2','ADL3','ADL4']
+            val_runs = ['ADL4']
 
-        test_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(test,run) for run in runs]
+            test_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(test,run) for run in runs]
 
+            train.remove(test)
+            runs.remove(val_runs[0])
+
+            train_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in runs]
+            val_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in val_runs]
+
+    if dataset_name == 'Daphnet':
+
+        if int(test)<10:
+            test = '0'+test
+
+
+
+        subjects = ['01','02','03','04','05','06','07','08','09','10']
+        runs = [2,2,3,1,2,2,2,1,1,1] # Number of recorded runs for each subject in daphnet dataset.
+        
+        ## Choose a subject at random to validate on.
+        
+        train = subjects
         train.remove(test)
-        runs.remove(val_runs[0])
+        val = np.random.choice(train)
+        train.remove(val)
 
-        train_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in runs]
-        val_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(sub,run) for sub in train for run in val_runs]
+        filenum = 0
+
+
+        train_files = ['dataset_fog_release/dataset/S{}R0{}.txt'.format(sub,run+1) for sub in train for run in range(0,runs[int(sub)-1])]
+        test_files = ['dataset_fog_release/dataset/S{}R0{}.txt'.format(test,run+1) for run in range(0,runs[int(test)-1])]
+        val_files = ['dataset_fog_release/dataset/S{}R0{}.txt'.format(val,run+1) for run in range(0,runs[int(val)-1])]
 
     return train_files, test_files, val_files
 
@@ -141,15 +166,20 @@ def divide_x_y(data, label):
         Features encapsulated into a matrix and labels as an array
     """
 
-    data_x = data[:, 1:NB_SENSOR_CHANNELS+1]
+    if label in ['locomotion','gestures']:
+        data_x = data[:, 1:NB_SENSOR_CHANNELS+1]                
+        if label == 'locomotion':
+            data_y = data[:, NB_SENSOR_CHANNELS+1]  # Locomotion label
+        elif label == 'gestures':
+            data_y = data[:, NB_SENSOR_CHANNELS+2]  # Gestures label
+    
+    elif label == -1:
 
+        data_x = data[:,0:-1]
+        data_y = data[:,-1]
 
-    if label not in ['locomotion', 'gestures']:
-            raise RuntimeError("Invalid label: '%s'" % label)
-    if label == 'locomotion':
-        data_y = data[:, NB_SENSOR_CHANNELS+1]  # Locomotion label
-    elif label == 'gestures':
-        data_y = data[:, NB_SENSOR_CHANNELS+2]  # Gestures label
+    else:
+        raise RuntimeError("Invalid label: '%s'" % label)
 
     return data_x, data_y
 
@@ -221,7 +251,7 @@ def check_data(data_set):
     return data_dir
 
 
-def process_dataset_file(data, label):
+def process_dataset_file(dataset_name, data, label):
     """Function defined as a pipeline to process individual OPPORTUNITY files
 
     :param data: numpy integer matrix
@@ -232,27 +262,38 @@ def process_dataset_file(data, label):
         Processed sensor data, segmented into features (x) and labels (y)
     """
 
-    # Select correct columns
-    data = select_columns_opp(data)
+    if dataset_name == 'Opportunity':
+        # Select correct columns
+        data = select_columns_opp(data)
 
-    # Colums are segmentd into features and labels
-    data_x, data_y =  divide_x_y(data, label)
-    data_y = adjust_idx_labels(data_y, label)
-    data_y = data_y.astype(int)
+        # Colums are segmentd into features and labels
+        data_x, data_y =  divide_x_y(data, label)
+        data_y = adjust_idx_labels(data_y, label)
+        data_y = data_y.astype(int)
 
-    # Perform linear interpolation
-    data_x = np.array([Series(i).interpolate() for i in data_x.T]).T
+        # Perform linear interpolation
+        data_x = np.array([Series(i).interpolate() for i in data_x.T]).T
 
-    # Remaining missing data are converted to zero
-    data_x[np.isnan(data_x)] = 0
+        # Remaining missing data are converted to zero
+        data_x[np.isnan(data_x)] = 0
 
-    # All sensor channels are normalized
-    data_x = normalize(data_x, NORM_MAX_THRESHOLDS, NORM_MIN_THRESHOLDS)
+        # All sensor channels are normalized
+        data_x = normalize(data_x, NORM_MAX_THRESHOLDS, NORM_MIN_THRESHOLDS)
+
+    if dataset_name == 'Daphnet':
+        data_x, data_y =  divide_x_y(data, -1)
+
+        # Perform linear interpolation
+        data_x = np.array([Series(i).interpolate() for i in data_x.T]).T
+
+        # Remaining missing data are converted to zero
+        data_x[np.isnan(data_x)] = 0
+
 
     return data_x, data_y
 
 
-def generate_data(dataset, test_sub, label):
+def generate_data(dataset_name, dataset, test_sub, label):
     """Function to read the OPPORTUNITY challenge raw data and process all sensor channels
 
     :param dataset: string
@@ -266,18 +307,17 @@ def generate_data(dataset, test_sub, label):
 
     data_dir = check_data(dataset)
 
-    train_files, test_files, val_files = select_subject(test_sub)
+    train_files, test_files, val_files = select_subject(dataset_name, test_sub)
 
     zf = zipfile.ZipFile(dataset)
     print('Processing dataset files ...')
 
     try:
         os.mkdir('data')
-    except FileExistsError:
+    except FileExistsError: # Remove data if already there.
         for file in os.scandir('data'):
             if 'data' in file.name:
                 os.remove(file.path)
-
 
     # Generate training files
     print('Generating training files')
@@ -285,7 +325,7 @@ def generate_data(dataset, test_sub, label):
         try:
             data = np.loadtxt(BytesIO(zf.read(filename)))
             print('... file {} -> train_data_{}'.format(filename,i))
-            x, y = process_dataset_file(data, label)
+            x, y = process_dataset_file(dataset_name, data, label)
             with open('data/train_data_{}'.format(i),'wb') as f:
                 cp.dump((x,y),f)
         except KeyError:
@@ -297,7 +337,7 @@ def generate_data(dataset, test_sub, label):
         try:
             data = np.loadtxt(BytesIO(zf.read(filename)))
             print('... file {} -> val_data_{}'.format(filename,i))
-            x, y = process_dataset_file(data, label)
+            x, y = process_dataset_file(dataset_name, data, label)
             with open('data/val_data_{}'.format(i),'wb') as f:
                 cp.dump((x,y),f)
         except KeyError:
@@ -309,13 +349,19 @@ def generate_data(dataset, test_sub, label):
         try:
             data = np.loadtxt(BytesIO(zf.read(filename)))
             print('... file {} -> test_data_{}'.format(filename,i))
-            x, y = process_dataset_file(data, label)
+            x, y = process_dataset_file(dataset_name, data, label)
             with open('data/test_data_{}'.format(i),'wb') as f:
                 cp.dump((x,y),f)
         except KeyError:
             print('ERROR: Did not find {} in zip file'.format(filename))
 
+def find_data(name):
 
+    dataset_dir = 'data/raw/'
+    dataset_names = {'Opportunity':'OpportunityUCIDataset.zip','Daphnet':'dataset_fog_release.zip','PAMAP2':'PAMAP2_Dataset.zip'}
+    dataset = dataset_dir + dataset_names[name]
+
+    return dataset
 
 
 def get_args():
@@ -328,11 +374,13 @@ def get_args():
     parser.add_argument(
         '-s','--subject', type=str, help='Subject to leave out for testing', required=True)
     parser.add_argument(
-        '-t', '--task', type=str.lower, help='Type of activities to be recognized', default="gestures", choices = ["gestures", "locomotion"], required=False)
+        '-t', '--task', type=str.lower, help='Type of activities to be recognized (for opportunity)', default="gestures", choices = ["gestures", "locomotion"], required=False)
+    parser.add_argument(
+        '-d', '--dataset', type=str, help='Name of dataset.', default="Opportunity", choices = ["Daphnet", "Opportunity"], required=False)
     # Array for all arguments passed to script
     args = parser.parse_args()
     # Assign args to variables
-    dataset = 'data/raw/OpportunityUCIDataset.zip'
+    dataset = args.dataset
     subject = args.subject
     label = args.task
     # Return all variable values
@@ -340,5 +388,6 @@ def get_args():
 
 if __name__ == '__main__':
 
-    OpportunityUCIDataset_zip, sub, l = get_args();
-    generate_data(OpportunityUCIDataset_zip, sub, l)
+    dataset_name, sub, l = get_args();
+    dataset = find_data(dataset_name)
+    generate_data(dataset_name, dataset, sub, l)
