@@ -9,33 +9,36 @@ from torch import nn
 from utils import *
 import csv
 import seaborn as sn
+import argparse
 
 # Define constants
 
 n_channels = 113 # number of sensor channels
-len_seq = 20 # Sliding window length
+len_seq = 30 # Sliding window length
 stride = 1 # Sliding window step
 num_epochs = 300 # Max no. of epochs to train for
-num_batches= 5 # No. of training batches per epoch. -1 means all windows will be presented at least once, up to batchlen times per epoch (unless undersampled)
+num_batches= 20 # No. of training batches per epoch. -1 means all windows will be presented at least once, up to batchlen times per epoch (unless undersampled)
 batch_size = 1000 # Batch size / width - this many windows of data will be processed at once
-patience= 300 # Patience of early stopping routine. If criteria does not decrease in this many epochs, training is stopped.
-batchlen = 500 # No. of consecutive windows in a batch. If false, the largest number of windows possible is used.
+patience= 30 # Patience of early stopping routine. If criteria does not decrease in this many epochs, training is stopped.
+batchlen = 50 # No. of consecutive windows in a batch. If false, the largest number of windows possible is used.
 val_batch_size = 1000 # Batch size for validation/testing. 
-test_batch_size = 10000 # Useful to make this as large as possible given GPU memory, to speed up testing.
+test_batch_size = 1000 # Useful to make this as large as possible given GPU memory, to speed up testing.
 lr = 0.0001 # Initial (max) learning rate
 num_batches_val = 1 # How many batches should we validate on each epoch
-lr_step = 100
+lr_step = 50
+n_conv = 4
+n_filters = 64
+logfile = 'log'
 
 opp_class_names = ['Null','Open Door 1','Open Door 2','Close Door 1','Close Door 2','Open Fridge',
 'Close Fridge','Open Dishwasher','Close Dishwasher','Open Drawer 1','Close Drawer 1','Open Drawer 2','Close Drawer 2',
 'Open Drawer 3','Close Drawer 3','Clean Table','Drink from Cup','Toggle Switch']
 
 
-
 ## Define our DeepConvLSTM class, subclassing nn.Module.
 class DeepConvLSTM(nn.Module):
 
-	def __init__(self, n_hidden = 128, n_layers = 2, n_filters = 64,
+	def __init__(self, n_conv = n_conv, n_hidden = 128, n_layers = 2, n_filters = n_filters,
 				n_classes = 18, filter_size = 5,pool_filter_size=3, drop_prob = 0.5):
 
 		super(DeepConvLSTM, self).__init__() # Call init function for nn.Module whenever this function is called
@@ -48,21 +51,14 @@ class DeepConvLSTM(nn.Module):
 		self.filter_size = filter_size # convolutional filter size
 		self.pool_filter_size = pool_filter_size # max pool filter size if using
  
- 		# Convolutional net
-		self.convlayer = nn.Sequential(
-			nn.Conv1d(n_channels, n_filters, (filter_size)),
-			# nn.MaxPool1d((pool_filter_size)), # Max pool layers, optional. 
-			nn.Conv1d(n_filters, n_filters, (filter_size)),
-			# nn.MaxPool1d((pool_filter_size)),
-			nn.Conv1d(n_filters, n_filters, (filter_size)),
-			nn.Conv1d(n_filters, n_filters, (filter_size))
-			)
+		# Convolutional net
+		self.convlayer = nn.ModuleList([nn.Conv1d(n_channels, n_filters, (filter_size))]) #First layer should map from number of channels to number of filters
+		self.convlayer.extend([nn.Conv1d(n_filters, n_filters, (filter_size)) for i in range(n_conv-1)]) # Subsequent layers should map n_filters -> n_filters
 
 		# LSTM layers
 		self.lstm = nn.LSTM(n_filters, n_hidden, n_layers, batch_first=True)
 
 		# Dropout layer
-		self.dropout2d = nn.Dropout2d(p=drop_prob)
 		self.dropout = nn.Dropout(p=drop_prob)
 
 		# Output layer
@@ -74,7 +70,10 @@ class DeepConvLSTM(nn.Module):
 		#Reshape x if necessary to add the 2nd dimension
 		x = x.view(-1, n_channels, len_seq)
 		# print(x.size())
-		x = self.convlayer(x)
+
+		for conv in self.convlayer:
+			x = conv(x)
+
 		x = x.view(batch_size, -1, self.n_filters)
 		
 
@@ -103,14 +102,13 @@ class DeepConvLSTM(nn.Module):
 
 
 
-def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch_size, lr=lr, time=True, shuffle=True):
-
+def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch_size, lr=lr, time=True, shuffle=True, logfile=logfile+'.csv'):
 
 	if time:
 		print('Starting training at',datetime.now())
 		start_time=datetime.now()
 
-	weight_decay = 1e-5*lr*batch_size*(50/batchlen)
+	weight_decay = 1e-4*lr*batch_size
 	opt = torch.optim.Adam(net.parameters(),lr=lr,weight_decay=weight_decay,amsgrad=True)
 	scheduler = torch.optim.lr_scheduler.StepLR(opt,lr_step) # Learning rate scheduler to reduce LR every 100 epochs
 
@@ -135,7 +133,8 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 
 	early_stopping = EarlyStopping(patience=patience, verbose=False)
 
-	with open('log.csv', 'w', newline='') as csvfile: # We will save some training statistics to plot a loss curve later.
+	print('Logging training to',logfile)
+	with open(logfile, 'w', newline='') as csvfile: # We will save some training statistics to plot a loss curve later.
 
 		for e in range(epochs):
 			
@@ -159,7 +158,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 
 				h = tuple([each.data for each in h])  # Get rid of gradients in hidden and cell states
 
-        
+		
 				if train_on_gpu:
 					inputs,targets = inputs.cuda(),targets.cuda()
 				
@@ -238,7 +237,7 @@ def train(net, X_train, y_train,X_val,y_val, epochs=num_epochs, batch_size=batch
 
 
 
-def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
+def test(net, X_test, y_test, batch_size, shuffle=True, run_name=logfile, show_results=False):
 
 	print('Starting testing at', datetime.now())
 	start_time=datetime.now()
@@ -293,33 +292,91 @@ def test(net, X_test, y_test, batch_size, remove_nulls=False, shuffle=True):
 
 	classreport = classification_report(targets_cumulative, top_classes,target_names=opp_class_names)
 	confmatrix = confusion_matrix(targets_cumulative, top_classes,normalize='true')
-	print('---- TESTING REPORT ----')
+	print('---- TESTING REPORT {} ----'.format(run_name))
 	print(classreport)
 
 	df_cm = pd.DataFrame(confmatrix, index=opp_class_names,columns=opp_class_names)
 	plt.figure(10,figsize=(15,12))
-	sn.heatmap(df_cm,annot=True,fmt='.2f',cmap='YlOrRd')
-	plt.savefig('Results/{:.2f}_Confmatrix_{}_{}_{}_{}.png'.format(f1score,datetime.now(),lr,batchlen,batch_size))
-	plt.show(plt.figure(10))
+	sn.heatmap(df_cm,annot=True,fmt='.2f',cmap='Purples')
+	plt.savefig('Results/{}-{}-{}-Confmatrix.png'.format(datetime.now(),log_name,f1score))
+	if show_results:
+		plt.show(plt.figure(10))
+
+
+
+###Command line parser - change constants if necessary
+def get_args():
+	'''This function parses and return arguments passed in'''
+	parser = argparse.ArgumentParser(
+		description='DeepConvLSTM')
+	# Add arguments
+	parser.add_argument(
+		'-a','--architecture', type=str, help='Desired network architecture. Defaults to original DeepConvLSTM.', required=False)
+	parser.add_argument(
+		'-l','--log_name', type=str, help='Name of file to write training log to. Also determines name of graphs and confusion matrix. Defaults to log.', required=False)
+	parser.add_argument(
+		'-w','--window_length', type=int, help='Desired length of sliding window. Defaults to 30.', required=False)
+	parser.add_argument(
+		'-bl','--batch_length', type=int, help='Length of metabatches / number of consecutive windows. Defaults to 50.', required=False)
+	parser.add_argument(
+		'-bw','--batch_width', type=int, help='Width of metabatches / number of windows per parallel batch. Defaults to 1000.', required=False)
+	parser.add_argument(
+		'-n','--num_batches', type=int, help='Number of batches per epoch. Defaults to 20', required=False)
+# Array for all arguments passed to script
+	args = parser.parse_args()
+	# Assign args to variables
+	architecture = args.architecture
+	window_length = args.window_length
+	batch_length = args.batch_length
+	batch_width = args.batch_width
+	num_batches = args.num_batches
+	log_name = args.log_name
+	# Return all variable values
+	return architecture, window_length, batch_length, batch_width, num_batches, log_name
 
 
 
 if __name__ == '__main__':
 
+	architecture, update_len, update_batch_length, update_batch_width, update_num_batches, log_name = get_args()
+
+	## Update constants if necessary
+	if architecture:
+		if architecture == 'HASCA-short':
+			n_conv = 2
+			n_filters = 128
+			print('Training with HASCA-short architecture.')
+		elif architecture == 'HASCA-standard':
+			n_conv = 4
+			n_filters = 64
+		else:
+			print('Architecture not recognised, defaulting to original DeepConvLSTM architecture.')
+	
+	if update_len:
+		len_seq = update_len
+	if update_batch_length:
+		batchlen = update_batch_length
+	if update_batch_width:
+		batch_size = update_batch_width
+	if update_num_batches:
+		num_batches = update_num_batches
+	if log_name:
+		logfile = log_name
+
 	print('==HYPERPARAMETERS==')
-	print('learning rate',lr,'batch length',batchlen,'batch size',batch_size)
+	print('Window size',len_seq,'learning rate',lr,'batch length',batchlen,'batch size',batch_size)
 
 	X_train,y_train = load_opp_runs('train',len_seq, stride)
 	X_val, y_val = load_opp_runs('val',len_seq, stride)
 
-	net = DeepConvLSTM()
+	net = DeepConvLSTM(n_conv=n_conv,n_filters=n_filters)
 
 	net.apply(init_weights)
 
 	train_on_gpu = torch.cuda.is_available() # Check for cuda
 
 	try:
-		train(net,X_train,y_train,X_val,y_val, batch_size=batch_size, lr=lr)
+		train(net,X_train,y_train,X_val,y_val, batch_size=batch_size, lr=lr, logfile=logfile+'.csv')
 	except(KeyboardInterrupt):
 		pass
 
@@ -328,7 +385,7 @@ if __name__ == '__main__':
 	del X_val
 	del y_val
 
-	plot_data(save_fig='{}-{}-{}-{}'.format(datetime.now(),lr,batchlen,batch_size))
+	plot_data(logname=logfile+'.csv',save_fig='{}-{}-{}-{}'.format(log_name,datetime.now(),len_seq,batchlen))
 
 	print('Loading test data')
 
@@ -336,7 +393,7 @@ if __name__ == '__main__':
 
 	print('Testing fully trained model.')
 
-	test(net, X_test,y_test, batch_size=batch_size, remove_nulls=False)
+	test(net, X_test,y_test, batch_size=batch_size)
 
 	torch.save(net.state_dict(), 'fullytrained.pt')
 
@@ -348,7 +405,7 @@ if __name__ == '__main__':
 
 	print('Testing checkpointed model.')
 
-	test(net, X_test,y_test, batch_size=batch_size, remove_nulls=False)
+	test(net, X_test,y_test, batch_size=batch_size)
 
 	print('Plotting training curves')
 
