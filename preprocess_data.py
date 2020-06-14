@@ -31,8 +31,8 @@ def select_subject(dataset_name, test):
         else: 
 
             train = ['1','2','3','4']
-            runs = ['Drill','ADL1','ADL2','ADL3','ADL4']
-            val_runs = ['ADL4']
+            runs = ['Drill','ADL1','ADL2','ADL3','ADL4','ADL5']
+            val_runs = ['ADL5']
 
             test_files = ['OpportunityUCIDataset/dataset/S{}-{}.dat'.format(test,run) for run in runs]
 
@@ -175,8 +175,9 @@ def divide_x_y(data, label):
     
     elif label == -1:
 
-        data_x = data[:,0:-1]
+        data_x = data[:,1:-1]
         data_y = data[:,-1]
+
 
     else:
         raise RuntimeError("Invalid label: '%s'" % label)
@@ -288,6 +289,12 @@ def process_dataset_file(dataset_name, data, label):
 
         # Remaining missing data are converted to zero
         data_x[np.isnan(data_x)] = 0
+
+        # Redesignate classes from 0, 1, 2 to 0, 1 = not freeze, freeze.
+        data_y = data_y.astype(int)
+        reindex = [0,0,1]
+        data_y = np.array([reindex[y] for y in data_y])
+
 
 
     return data_x, data_y
