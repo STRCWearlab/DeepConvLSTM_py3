@@ -13,13 +13,13 @@ def init_weights(m):
 	if type(m) == nn.LSTM:
 		for name, param in m.named_parameters():
 			if 'weight_ih' in name:
-				torch.nn.init.kaiming_normal_(param.data)
+				torch.nn.init.orthogonal_(param.data)
 			elif 'weight_hh' in name:
-				torch.nn.init.kaiming_normal_(param.data)
+				torch.nn.init.orthogonal_(param.data)
 			elif 'bias' in name:
 				param.data.fill_(0)
 	elif type(m) == nn.Conv1d or type(m) == nn.Linear:
-		torch.nn.init.kaiming_normal_(m.weight)
+		torch.nn.init.orthogonal_(m.weight)
 		m.bias.data.fill_(0)
 
 
@@ -218,6 +218,36 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batc
 		batches = batches.transpose()
 		for pos,batch in enumerate(batches):
 			yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
+
+def iterate_minibatches_test(inputs, targets, seq_len, stride):
+	
+	assert (seq_len/stride).is_integer(), 'in order to generate sequential batches, the sliding window length must be divisible by the step.'
+
+	starts = [[(x,int(np.floor(len(i)/seq_len))) for x in range(0,seq_len)] for i in inputs]
+
+	# for i in range(1,len(starts)):
+	# 	starts[i] = [(x+1+len(inputs[i-1]),j) for x,j in starts[i]]
+
+
+	starts = [sublist for sublist in starts]
+	inputs = [sublist for sublist in inputs]
+	targets = [sublist for sublist in targets]
+
+	step = lambda x,j : [int(x+i*seq_len/stride) for i in range(j)]
+
+	for i in range(len(inputs)):
+
+		
+		for start in starts[i][0:seq_len]:
+
+			start,batchlen = start
+			batches = np.array([np.array([i for i in step(start[0],start[1])]) for start in starts[i][0:seq_len]])
+
+
+		batches = batches.transpose()
+				
+		for pos,batch in enumerate(batches):
+			yield np.array([inputs[i][j] for j in batch]), np.array([targets[i][j] for j in batch]), pos
 
 
 class EarlyStopping:
