@@ -11,6 +11,8 @@ import csv
 import seaborn as sn
 import argparse
 
+train_on_gpu = torch.cuda.is_available() # Check for cuda
+
 # Define constants
 
 n_channels = 113 # number of sensor channels
@@ -20,12 +22,12 @@ num_epochs = 300 # Max no. of epochs to train for
 num_batches= 20 # No. of training batches per epoch. -1 means all windows will be presented at least once, up to batchlen times per epoch (unless undersampled)
 batch_size = 1000 # Batch size / width - this many windows of data will be processed at once
 patience= 30 # Patience of early stopping routine. If criteria does not decrease in this many epochs, training is stopped.
-batchlen = 50 # No. of consecutive windows in a batch. If false, the largest number of windows possible is used.
+batchlen = 150 # No. of consecutive windows in a batch. If false, the largest number of windows possible is used.
 val_batch_size = 1000 # Batch size for validation/testing. 
 test_batch_size = 1000 # Useful to make this as large as possible given GPU memory, to speed up testing.
 lr = 0.0001 # Initial (max) learning rate
 num_batches_val = 1 # How many batches should we validate on each epoch
-lr_step = 50
+lr_step = 100
 n_conv = 4
 n_filters = 64
 logfile = 'log'
@@ -243,7 +245,7 @@ def test(net, X_test, y_test, batch_size, shuffle=True, run_name=logfile, show_r
 	start_time=datetime.now()
 	criterion = nn.CrossEntropyLoss()
 	
-	if(train_on_gpu):
+	if(torch.cuda.is_available()):
 		net.cuda()
 
 	net.eval()
@@ -259,7 +261,7 @@ def test(net, X_test, y_test, batch_size, shuffle=True, run_name=logfile, show_r
 
 	with torch.no_grad():
 			
-		for batch in iterate_minibatches_2D(X_test, y_test, test_batch_size, len_seq, stride, shuffle=True, num_batches=-1, batchlen=batchlen, drop_last=False):
+		for batch in iterate_minibatches_test(X_test, y_test, len_seq, stride):
 				
 			x,y,pos=batch
 
@@ -269,7 +271,6 @@ def test(net, X_test, y_test, batch_size, shuffle=True, run_name=logfile, show_r
 
 			if(train_on_gpu):
 				targets,inputs = targets.cuda(),inputs.cuda()
-
 
 			if pos == 0:
 				test_h = net.init_hidden(inputs.size()[0])
@@ -282,8 +283,8 @@ def test(net, X_test, y_test, batch_size, shuffle=True, run_name=logfile, show_r
 			top_p, top_class = output.topk(1,dim=1)
 			top_classes.extend([p.item() for p in top_class])
 
-
-
+	equals = [top_classes[i] == target for i,target in enumerate(targets_cumulative)]
+	accuracy = np.mean(equals)
 
 	print('Finished testing at', datetime.now())
 	print('Total time elapsed during inference:', (datetime.now()-start_time).total_seconds())
@@ -301,6 +302,10 @@ def test(net, X_test, y_test, batch_size, shuffle=True, run_name=logfile, show_r
 	plt.savefig('Results/{}-{}-{}-Confmatrix.png'.format(datetime.now(),log_name,f1score))
 	if show_results:
 		plt.show(plt.figure(10))
+
+	print('Testing accuracy:',accuracy)
+	print('Testing f1 score:',f1score)
+
 
 
 
@@ -366,14 +371,14 @@ if __name__ == '__main__':
 	print('==HYPERPARAMETERS==')
 	print('Window size',len_seq,'learning rate',lr,'batch length',batchlen,'batch size',batch_size)
 
-	X_train,y_train = load_opp_runs('train',len_seq, stride)
-	X_val, y_val = load_opp_runs('val',len_seq, stride)
+	X_train,y_train = load_data('train',len_seq, stride)
+	X_val, y_val = load_data('val',len_seq, stride)
 
 	net = DeepConvLSTM(n_conv=n_conv,n_filters=n_filters)
 
 	net.apply(init_weights)
 
-	train_on_gpu = torch.cuda.is_available() # Check for cuda
+	
 
 	try:
 		train(net,X_train,y_train,X_val,y_val, batch_size=batch_size, lr=lr, logfile=logfile+'.csv')
@@ -389,11 +394,11 @@ if __name__ == '__main__':
 
 	print('Loading test data')
 
-	X_test, y_test = load_opp_runs('test',len_seq, stride)
+	X_test, y_test = load_data('test',len_seq, stride)
 
 	print('Testing fully trained model.')
 
-	test(net, X_test,y_test, batch_size=batch_size)
+	test(net, X_test,y_test, batch_size=test_batch_size)
 
 	torch.save(net.state_dict(), 'fullytrained.pt')
 
@@ -405,7 +410,7 @@ if __name__ == '__main__':
 
 	print('Testing checkpointed model.')
 
-	test(net, X_test,y_test, batch_size=batch_size)
+	test(net, X_test,y_test, batch_size=test_batch_size)
 
 	print('Plotting training curves')
 
