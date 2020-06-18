@@ -26,7 +26,7 @@ and choose opportunity_example.ipynb.
 After installing all dependencies with pipenv as above you will be able to run the main DeepConvLSTM_py3.py script. Use
 
 ```
-pipenv run DeepConvLSTM_py3.py -h
+pipenv run python3 DeepConvLSTM_py3.py -h
 ```
 
 for a list of command line options.
