@@ -145,7 +145,7 @@ def slide(data_x, data_y, ws, ss,save=False):
 		return x,y
 
 
-def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batches=10, batchlen=50, drop_last=True, shuffle=True):
+def iterate_minibatches_2D(inputs, targets, batchsize=1000, stride=1, num_batches=20, batchlen=50, drop_last=True, shuffle=True):
 	"""
 	Args:
 		inputs (array): Dataset sensor channels, a stacked array of runs, after a sliding window has been applied.
@@ -153,8 +153,6 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batc
 		targets (array): Dataset labels, a stacked array of labels corresponding to the windows in inputs.
 
 		batchsize (int): Number of windows in each batch.
-
-		seq_len (int): Length of sliding window sequence.
 
 		stride (int): Size of sliding window step.
 
@@ -167,24 +165,22 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batc
 		shuffle (bool): Determines whether to shuffle the batches or iterate through sequentially.
 				Default: True
 	"""
+	window_size = len(inputs[0][0])
+	assert (window_size/stride).is_integer(), 'in order to generate sequential batches, the sliding window length must be divisible by the step.'
 
-	assert (seq_len/stride).is_integer(), 'in order to generate sequential batches, the sliding window length must be divisible by the step.'
-
-	starts = [[x for x in range(0,len(i)-int(((batchlen*seq_len)+1)/stride))] for i in inputs]
+	starts = [[x for x in range(0,len(i)-int(((batchlen*window_size)+1)/stride))] for i in inputs]
 
 	for i in range(1,len(starts)):
-		starts[i] = [x+1+starts[i-1][-1]+int(((batchlen*seq_len)+1)/stride) for x in starts[i]]
+		starts[i] = [x+1+starts[i-1][-1]+int(((batchlen*window_size)+1)/stride) for x in starts[i]]
 
 
 	starts = [val for sublist in starts for val in sublist]
 	inputs = [val for sublist in inputs for val in sublist]
 	targets = [val for sublist in targets for val in sublist]
 
-	
 
 
-
-	step = lambda x : [int(x+i*seq_len/stride) for i in range(batchlen)]
+	step = lambda x : [int(x+i*window_size/stride) for i in range(batchlen)]
 
 	if shuffle:
 		np.random.shuffle(starts)
@@ -219,11 +215,11 @@ def iterate_minibatches_2D(inputs, targets, batchsize, seq_len, stride, num_batc
 			for pos,batch in enumerate(batches):
 				yield np.array([inputs[i] for i in batch]), np.array([targets[i] for i in batch]), pos
 
-def iterate_minibatches_test(inputs, targets, seq_len, stride):
+def iterate_minibatches_test(inputs, targets, window_size, stride):
 	
-	assert (seq_len/stride).is_integer(), 'in order to generate sequential batches, the sliding window length must be divisible by the step.'
+	assert (window_size/stride).is_integer(), 'in order to generate sequential batches, the sliding window length must be divisible by the step.'
 
-	starts = [[(x,int(np.floor(len(i)/seq_len))) for x in range(0,seq_len)] for i in inputs]
+	starts = [[(x,int(np.floor(len(i)/window_size))) for x in range(0,window_size)] for i in inputs]
 
 	# for i in range(1,len(starts)):
 	# 	starts[i] = [(x+1+len(inputs[i-1]),j) for x,j in starts[i]]
@@ -233,15 +229,15 @@ def iterate_minibatches_test(inputs, targets, seq_len, stride):
 	inputs = [sublist for sublist in inputs]
 	targets = [sublist for sublist in targets]
 
-	step = lambda x,j : [int(x+i*seq_len/stride) for i in range(j)]
+	step = lambda x,j : [int(x+i*window_size/stride) for i in range(j)]
 
 	for i in range(len(inputs)):
 
 		
-		for start in starts[i][0:seq_len]:
+		for start in starts[i][0:window_size]:
 
 			start,batchlen = start
-			batches = np.array([np.array([i for i in step(start[0],start[1])]) for start in starts[i][0:seq_len]])
+			batches = np.array([np.array([i for i in step(start[0],start[1])]) for start in starts[i][0:window_size]])
 
 
 		batches = batches.transpose()
