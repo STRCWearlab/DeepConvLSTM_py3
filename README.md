@@ -5,28 +5,18 @@ Included is an implementation of DeepConvLSTM in python 3 and torch, along with 
 
 
 ### Opportunity example notebook
-To interact with the notebook, you can use pipenv (https://pypi.org/project/pipenv/) to create a virtual environment with all of the requirements in the included pipfile installed. 
-
-After installing pipenv, just run
+To interact with the notebook, you will need to install the requirements indicated in the requirements.txt file included in the repository. Once that is done, run 
 
 ```
-pipenv install
+jupyter notebook opportunity_example.ipynb
 ```
-
-in the directory containing the pipfile, then 
-
-```
-pipenv run jupyter notebook
-```
-
-and choose opportunity_example.ipynb. 
 
 ### Main script
 
-After installing all dependencies with pipenv as above you will be able to run the main DeepConvLSTM_py3.py script. Use
+After installing all dependencies in the requirements.txt file you will be able to run the main DeepConvLSTM_py3.py script. Use
 
 ```
-pipenv run python3 DeepConvLSTM_py3.py -h
+python3 DeepConvLSTM_py3.py -h
 ```
 
 for a list of command line options.
