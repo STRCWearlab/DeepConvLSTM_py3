@@ -397,7 +397,7 @@ if __name__ == '__main__':
 
 	print('Testing fully trained model.')
 
-	test(net, X_test,y_test, batch_size=test_batch_size, **args)
+	test(net, X_test,y_test, **args)
 
 	torch.save(net.state_dict(), 'fullytrained.pt')
 
