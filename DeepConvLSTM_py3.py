@@ -54,13 +54,15 @@ class DeepConvLSTM(nn.Module):
 		self.convlayer.extend([nn.Conv1d(n_filters, n_filters, (filter_size)) for i in range(n_conv-1)]) # Subsequent layers should map n_filters -> n_filters
 
 		# LSTM layers
-		self.lstm = nn.LSTM(n_filters, n_hidden, n_layers, batch_first=True)
-
+		if self.n_layers > 0:
+			self.lstm = nn.LSTM(n_filters, n_hidden, n_layers, batch_first=True)
+			self.predictor = nn.Linear(n_hidden,n_classes)
+		else:
+			self.predictor = nn.Linear(n_filters,n_classes)
+		
 		# Dropout layer
 		self.dropout = nn.Dropout(p=drop_prob)
 
-		# Output layer
-		self.predictor = nn.Linear(n_hidden,n_classes)
 
 	
 	def forward(self, x, hidden, batch_size):
@@ -74,12 +76,14 @@ class DeepConvLSTM(nn.Module):
 
 		x = x.view(batch_size, -1, self.n_filters)
 		
+		if model.n_layers > 0:
+			x,hidden = self.lstm(x, hidden)
 
-		x,hidden = self.lstm(x, hidden)
+			x = self.dropout(x)
 
-		x = self.dropout(x)
+			x = x.view(batch_size, -1, self.n_hidden)[:,-1,:]
+		
 
-		x = x.view(batch_size, -1, self.n_hidden)[:,-1,:]
 		out = self.predictor(x)
 
 		return out, hidden
