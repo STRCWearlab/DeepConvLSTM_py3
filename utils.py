@@ -23,20 +23,20 @@ def init_weights(m):
 		m.bias.data.fill_(0)
 
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=True, num_batches=-1):
+def iterate_minibatches(inputs, targets, batchsize, shuffle=True, num_batches=None):
 
 	batch = lambda j : [x for x in range(j*batchsize,(j+1)*batchsize)]
 	
-	batches = [i for i in range(int(len(inputs)/batchsize)-1)]
+	batches = [i for i in range(int(len(inputs)/batchsize))]
 
 
 	if shuffle:
 		np.random.shuffle(batches)
-		for i in batches[0:num_batches]:
+		for i in batches[:num_batches]:
 			yield np.array([inputs[i] for i in batch(i)]), np.array([targets[i] for i in batch(i)])
 
 	else:
-		for i in batches[0:num_batches]:
+		for i in batches[:num_batches]:
 			yield np.array([inputs[i] for i in batch(i)]),np.array( [targets[i] for i in batch(i)])
 
 

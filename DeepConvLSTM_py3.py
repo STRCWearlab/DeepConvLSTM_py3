@@ -6,12 +6,19 @@ import sklearn.metrics as metrics
 from sklearn.metrics import classification_report,confusion_matrix
 from datetime import datetime
 from torch import nn
-from utils import *
 import csv
 import seaborn as sn
 import argparse
 
 train_on_gpu = torch.cuda.is_available() # Check for cuda
+
+## Import utils safely
+if __package__ is None or __package__ == '':
+    # uses current directory visibility
+    from utils import *
+else:
+    # uses current package visibility
+    from .utils import *
 
 # Define constants
 
