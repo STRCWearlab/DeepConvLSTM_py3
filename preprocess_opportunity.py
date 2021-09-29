@@ -5,7 +5,6 @@ import numpy as np
 
 from io import BytesIO
 from pandas import Series
-import pandas as pd
 from utils import sliding_window, paint, plot_pie
 
 # Hardcoded number of sensor channels employed in the OPPORTUNITY challenge
@@ -59,10 +58,10 @@ def normalize(data, mean, std):
 
     :param data: numpy integer matrix
         Sensor data
-    :param max_list: numpy integer array
-        Array containing maximums values for every one of the 113 sensor channels
-    :param min_list: numpy integer array
-        Array containing minimum values for every one of the 113 sensor channels
+    :param mean: numpy integer array
+        Array containing mean values for each sensor channel
+    :param std: numpy integer array
+        Array containing the standard deviation of each sensor channel
     :return:
         Normalized sensor data
     """
@@ -220,7 +219,7 @@ def generate_data(dataset, test_sub, label):
                 os.remove(file.path)
 
     data_x = np.empty((0, NB_SENSOR_CHANNELS))
-    data_y = np.empty((0), dtype=np.uint8)
+    data_y = np.empty(0, dtype=np.uint8)
 
     # Generate training files
     print('Generating training files')
@@ -241,7 +240,7 @@ def generate_data(dataset, test_sub, label):
 
     np.savez_compressed('data/opportunity/train_data.npz', data=data_x, target=data_y)
     data_x = np.empty((0, NB_SENSOR_CHANNELS))
-    data_y = np.empty((0), dtype=np.uint8)
+    data_y = np.empty(0, dtype=np.uint8)
     # Generate validation files
     print('Generating validation files')
     for i, filename in enumerate(val_files):
@@ -258,7 +257,7 @@ def generate_data(dataset, test_sub, label):
 
     np.savez_compressed('data/opportunity/val_data.npz', data=data_x, target=data_y)
     data_x = np.empty((0, NB_SENSOR_CHANNELS))
-    data_y = np.empty((0), dtype=np.uint8)
+    data_y = np.empty(0, dtype=np.uint8)
     # Generate testing files
     print('Generating testing files')
     for i, filename in enumerate(test_files):

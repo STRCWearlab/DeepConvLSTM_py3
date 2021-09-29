@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sn
 
+
 def init_weights(m):
 	if type(m) == nn.LSTM:
 		for name, param in m.named_parameters():
@@ -17,6 +18,7 @@ def init_weights(m):
 	elif type(m) == nn.Conv1d or type(m) == nn.Linear:
 		torch.nn.init.orthogonal_(m.weight)
 		m.bias.data.fill_(0)
+
 
 def makedir(path):
     os.makedirs(path, exist_ok=True)
@@ -167,7 +169,7 @@ class AverageMeter(object):
     def __str__(self):
         fmtstr = "{avg" + self.fmt + "}"
         return fmtstr.format(**self.__dict__)
-    
+
 def sliding_window(x, y, window, stride, scheme="last"):
 
     data, target = [], []
