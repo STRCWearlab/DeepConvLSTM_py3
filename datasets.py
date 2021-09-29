@@ -9,7 +9,9 @@ __all__ = ["SensorDataset"]
 
 class SensorDataset(Dataset):
     """
-    a dataset class for multi-channel time-series data captured by wearable sensors
+    A dataset class for multi-channel time-series data captured by wearable sensors.
+    This class is slightly modified from the original implementation at:
+     https://github.com/AdelaideAuto-IDLab/Attend-And-Discriminate
     """
 
     def __init__(
@@ -20,19 +22,33 @@ class SensorDataset(Dataset):
         stride_test,
         path_processed,
         prefix,
-        transform=None,
         verbose=False,
     ):
+        """
+        Initialize instance.
+        :param dataset: str. Name of target dataset.
+        :param window: int. Sliding window size in samples.
+        :param stride: int. Step size of the sliding window for training and validation data.
+        :param stride_test: int. Step size of the sliding window for testing data.
+        :param path_processed: str. Path to directory containing processed training, validation and test data.
+        :param prefix: str. Prefix for the filename of the processed data. Options 'train', 'val', or 'test'.
+        :param verbose: bool. Whether to print detailed information about the dataset when initializing.
+        """
 
         self.dataset = dataset
         self.window = window
         self.stride = stride
         self.prefix = prefix
-        self.transform = transform
         self.path_processed = path_processed
         self.verbose = verbose
 
         self.path_dataset = os.path.join(path_processed, f"{prefix}_data.npz")
+
+        if prefix == "test" and stride_test == 1:
+            self.path_dataset = os.path.join(path_processed, "test_sample_wise.npz")
+        else:
+            self.path_dataset = os.path.join(path_processed, f"{prefix}_data.npz".format(prefix))
+
         dataset = np.load(self.path_dataset)
 
         self.data = dataset["data"]
@@ -53,16 +69,16 @@ class SensorDataset(Dataset):
             self.weight_samples = self.get_weights()
 
         self.n_channels = self.data.shape[-1]
+        self.n_classes = self.target.shape[0]
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, index):
 
-        if self.transform is None:
-            data = torch.FloatTensor(self.data[index])
-            target = torch.LongTensor([int(self.target[index])])
-            idx = torch.from_numpy(np.array(index))
+        data = torch.FloatTensor(self.data[index])
+        target = torch.LongTensor([int(self.target[index])])
+        idx = torch.from_numpy(np.array(index))
 
         return data, target, idx
 
@@ -108,10 +124,6 @@ class SensorDataset(Dataset):
         weight_samples = np.array([weight_target[t] for t in target])
         weight_samples = torch.from_numpy(weight_samples)
         weight_samples = weight_samples.double()
-
-        if self.verbose:
-            print(paint("[-] Target sampling weights:")),
-            print(weight_target)
 
         return weight_samples
 
