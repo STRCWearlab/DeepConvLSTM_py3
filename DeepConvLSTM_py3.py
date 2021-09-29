@@ -138,7 +138,7 @@ def model_train(model, dataset, dataset_val, args, verbose=False):
             print("[-] Learning rate: ", optimizer.param_groups[0]["lr"])
         train_one_epoch(model, loader, criterion, optimizer, args, verbose)
         loss, acc, fm, fw = eval_one_epoch(
-            model, loader, criterion, epoch, args
+            model, loader, criterion, args
         )
         start_inf = time.time()
         loss_val, acc_val, fm_val, fw_val = eval_one_epoch(
@@ -276,7 +276,7 @@ def model_eval(model, dataset_test, args, return_results):
     start_time = time.time()
 
     loss_test, acc_test, fm_test, fw_test = eval_one_epoch(
-        model, loader_test, criterion, -1, logger=None, args=args
+        model, loader_test, criterion, args
     )
 
     print(
