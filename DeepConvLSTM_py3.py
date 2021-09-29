@@ -9,9 +9,7 @@ from sklearn import metrics
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data.sampler import WeightedRandomSampler
 
-import pandas as pd
 import sklearn.metrics as metrics
 
 from datetime import timedelta
@@ -26,8 +24,8 @@ train_on_gpu = torch.cuda.is_available()  # Check for cuda
 ## Define our DeepConvLSTM class, subclassing nn.Module.
 class DeepConvLSTM(nn.Module):
 
-    def __init__(self, n_channels, n_classes, dataset, experiment='default', conv_kernels=64, kernel_size=5, LSTM_units=128,
-                 model='DeepConvLSTM'):
+    def __init__(self, n_channels, n_classes, dataset, experiment='default', conv_kernels=64, kernel_size=5,
+                 LSTM_units=128, model='DeepConvLSTM'):
         super(DeepConvLSTM, self).__init__()
 
         self.conv1 = nn.Conv2d(1, conv_kernels, (kernel_size, 1))
@@ -84,11 +82,28 @@ class DeepConvLSTM(nn.Module):
 
 
 def model_train(model, dataset, dataset_val, args, verbose=False):
+    """
+    Train model for a number of epochs.
+
+    :param model: A pytorch model
+    :param dataset: A SensorDataset containing the data to be used for training the model.
+    :param dataset_val: A SensorDataset containing the data to be used for validation of the model.
+    :param args: A dict containing config options for the training.
+    Required keys:
+                    'batch_size': int, number of windows to process in each batch (default 256)
+                    'optimizer': str, optimizer function to use. Options: 'Adam' or 'RMSProp'. Default 'Adam'.
+                    'lr': float, maximum initial learning rate. Default 0.001.
+                    'lr_step': int, interval at which to decrease the learning rate. Default 10.
+                    'lr_decay': float, factor by which to  decay the learning rate. Default 0.9.
+                    'init_weights': str, How to initialize weights. Options 'orthogonal' or None. Default 'orthogonal'.
+                    'epochs': int, Total number of epochs to train the model for. Default 300.
+                    'print_freq': int, How often to print loss during each epoch if verbose=True. Default 100.
+
+    :param verbose:
+    :return:
+    """
     if verbose:
         print(paint("Running HAR training loop ..."))
-
-    logger = None  # SummaryWriter(log_dir=os.path.join(model.path_logs, "train"))
-    logger_val = None  # SummaryWriter(log_dir=os.path.join(model.path_logs, "val"))
 
     loader = DataLoader(dataset, args['batch_size'], True, pin_memory=True)
     loader_val = DataLoader(dataset_val, args['batch_size'], True, pin_memory=True)
@@ -121,13 +136,13 @@ def model_train(model, dataset, dataset_val, args, verbose=False):
         if verbose:
             print("--" * 50)
             print("[-] Learning rate: ", optimizer.param_groups[0]["lr"])
-        train_one_epoch(model, loader, criterion, optimizer, epoch, args)
+        train_one_epoch(model, loader, criterion, optimizer, args, verbose)
         loss, acc, fm, fw = eval_one_epoch(
-                model, loader, criterion, epoch, logger, args
+            model, loader, criterion, epoch, args
         )
         start_inf = time.time()
         loss_val, acc_val, fm_val, fw_val = eval_one_epoch(
-            model, loader_val, criterion, epoch, logger_val, args
+            model, loader_val, criterion, args
         )
         inf_time = round(time.time() - start_inf)
 
@@ -135,14 +150,16 @@ def model_train(model, dataset, dataset_val, args, verbose=False):
             print(
                 paint(
                     f"[-] Epoch {epoch}/{args['epochs']}"
-                    f"\tTrain loss: {loss:.2f} \tacc: {100 * acc:.2f}(%)\tfm: {100 * fm:.2f}(%)\tfw: {100 * fw:.2f}(%)\tinf:{inf_time}"
-                    )
+                    f"\tTrain loss: {loss:.2f} \tacc: {100 * acc:.2f}(%)\tfm: {100 * fm:.2f}(%)\tfw: {100 * fw:.2f}"
+                    f"(%)\tinf:{inf_time}"
                 )
+            )
 
             print(
                 paint(
                     f"[-] Epoch {epoch}/{args['epochs']}"
-                    f"\tVal loss: {loss_val:.2f} \tacc: {100 * acc_val:.2f}(%)\tfm: {100 * fm_val:.2f}(%)\tfw: {100 * fw_val:.2f}(%)\tinf:{inf_time}"
+                    f"\tVal loss: {loss_val:.2f} \tacc: {100 * acc_val:.2f}(%)\tfm: {100 * fm_val:.2f}(%)"
+                    f"\tfw: {100 * fw_val:.2f}(%)\tinf:{inf_time}"
                 )
             )
 
@@ -180,7 +197,7 @@ def model_train(model, dataset, dataset_val, args, verbose=False):
         print(paint("--" * 50, "blue"))
 
 
-def train_one_epoch(model, loader, criterion, optimizer, epoch, args, verbose=False):
+def train_one_epoch(model, loader, criterion, optimizer, args, verbose=False):
     losses = AverageMeter("Loss")
     model.train()
 
@@ -188,7 +205,7 @@ def train_one_epoch(model, loader, criterion, optimizer, epoch, args, verbose=Fa
 
         data = data.cuda()
         target = target.view(-1).cuda()
-        
+
         z, logits = model(data)
 
         loss = criterion(logits, target)
@@ -196,19 +213,15 @@ def train_one_epoch(model, loader, criterion, optimizer, epoch, args, verbose=Fa
         losses.update(loss.item(), data.shape[0])
 
         optimizer.zero_grad()
-        
-        loss.backward()
+
         optimizer.step()
 
         if verbose:
             if batch_idx % args['print_freq'] == 0:
                 print(f"[-] Batch {batch_idx}/{len(loader)}\t Loss: {str(losses)}")
 
-        if batch_idx >= args['num_batches']:
-            break
 
-
-def eval_one_epoch(model, loader, criterion, epoch, logger, args):
+def eval_one_epoch(model, loader, criterion, args):
     losses = AverageMeter("Loss")
     y_true, y_pred = [], []
     model.eval()
@@ -227,9 +240,6 @@ def eval_one_epoch(model, loader, criterion, epoch, logger, args):
 
             y_pred.append(predictions.cpu().numpy().reshape(-1))
             y_true.append(target.cpu().numpy().reshape(-1))
-
-            if batch_idx >= args['num_batches_eval']:
-                break
 
     # append invalid samples at the beginning of the test sequence
     if loader.dataset.prefix == "test":
@@ -284,7 +294,7 @@ def model_eval(model, dataset_test, args, return_results):
         return acc_test, fm_test, fw_test, elapsed
 
 
-###Command line parser - change constants if necessary
+# Command line parser - set hyperparameters based on user input.
 def get_args():
     """This function parses and return arguments passed in"""
     parser = argparse.ArgumentParser(
@@ -345,12 +355,7 @@ if __name__ == '__main__':
                     'lr_decay': args.lr_decay,
                     'init_weights': 'orthogonal',
                     'epochs': args.epochs,
-                    'beta': 3e-4,
-                    'clip_grad': 0,
-                    'lr_cent': 10e-3,
-                    'print_freq': 100,
-                    'num_batches': 212,
-                    'num_batches_eval': 212}
+                    'print_freq': 100}
 
     deepconv = DeepConvLSTM(n_channels=n_channels, n_classes=n_classes, dataset=args.dataset).cuda()
 
@@ -359,6 +364,5 @@ if __name__ == '__main__':
     dataset_test = SensorDataset(**config_dataset, prefix="test")
     test_config = {'batch_size': 256,
                    'train_mode': False,
-                   'dataset': args.dataset,
-                   'num_batches_eval': 212}
+                   'dataset': args.dataset}
     model_eval(deepconv, dataset_test, test_config, False)
