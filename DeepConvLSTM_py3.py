@@ -151,7 +151,7 @@ def model_train(model, dataset, dataset_val, args, verbose=False):
                 paint(
                     f"[-] Epoch {epoch}/{args['epochs']}"
                     f"\tTrain loss: {loss:.2f} \tacc: {100 * acc:.2f}(%)\tfm: {100 * fm:.2f}(%)\tfw: {100 * fw:.2f}"
-                    f"(%)\tinf:{inf_time}"
+                    f"(%)\t"
                 )
             )
 
@@ -159,7 +159,7 @@ def model_train(model, dataset, dataset_val, args, verbose=False):
                 paint(
                     f"[-] Epoch {epoch}/{args['epochs']}"
                     f"\tVal loss: {loss_val:.2f} \tacc: {100 * acc_val:.2f}(%)\tfm: {100 * fm_val:.2f}(%)"
-                    f"\tfw: {100 * fw_val:.2f}(%)\tinf:{inf_time}"
+                    f"\tfw: {100 * fw_val:.2f}(%)"
                 )
             )
 
@@ -213,7 +213,8 @@ def train_one_epoch(model, loader, criterion, optimizer, args, verbose=False):
         losses.update(loss.item(), data.shape[0])
 
         optimizer.zero_grad()
-
+        
+        loss.backward()
         optimizer.step()
 
         if verbose:
