@@ -5,13 +5,14 @@ import numpy as np
 
 from io import BytesIO
 from pandas import Series
+import pandas as pd
 from utils import sliding_window, paint, plot_pie
 
 # Hardcoded number of sensor channels employed in the OPPORTUNITY challenge
 NB_SENSOR_CHANNELS = 113
 
 
-def select_subject(dataset_name, test):
+def select_subject(dataset_name):
     # Test set for the opportunity challenge.
     train_runs = ['S1-Drill', 'S1-ADL1', 'S1-ADL2', 'S1-ADL3', 'S1-ADL4', 'S2-Drill', 'S2-ADL1', 'S2-ADL2',
                   'S3-Drill', 'S3-ADL1', 'S3-ADL2', 'S2-ADL3', 'S3-ADL3']
@@ -183,16 +184,23 @@ def process_dataset_file(dataset_name, data, label):
     data_y = adjust_idx_labels(data_y, label)
     data_y = data_y.astype(int)
 
+    # Replace trailing NaN values with 0.0
+    data_x = pd.DataFrame(data_x)
+    for column in data_x:
+        ind = data_x[column].last_valid_index()
+        data_x[column][ind:] = data_x[column][ind:].fillna(0.0)
+    data_x = data_x.to_numpy()
+    
     # Perform linear interpolation
     data_x = np.array([Series(i).interpolate() for i in data_x.T]).T
-
+    
     # Remaining missing data are converted to zero
     data_x[np.isnan(data_x)] = 0
 
     return data_x, data_y
 
 
-def generate_data(dataset, test_sub, label):
+def generate_data(dataset, dataset_name, label):
     """Function to read the OPPORTUNITY challenge raw data and process all sensor channels
 
     :param dataset: string
@@ -206,7 +214,7 @@ def generate_data(dataset, test_sub, label):
 
     data_dir = check_data(dataset)
 
-    train_files, test_files, val_files = select_subject(dataset_name, test_sub)
+    train_files, test_files, val_files = select_subject(dataset_name)
 
     zf = zipfile.ZipFile(dataset)
     print('Processing dataset files ...')
