@@ -6,7 +6,13 @@ import numpy as np
 from io import BytesIO
 from pandas import Series
 import pandas as pd
-from utils import sliding_window, paint, plot_pie
+
+if __package__ is None or __package__ == '':
+    # uses current directory visibility
+    from utils import sliding_window, paint, plot_pie
+else:
+    # uses current package visibility
+    from .utils import sliding_window, paint, plot_pie
 
 # Hardcoded number of sensor channels employed in the OPPORTUNITY challenge
 NB_SENSOR_CHANNELS = 113
