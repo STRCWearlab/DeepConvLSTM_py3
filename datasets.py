@@ -2,8 +2,14 @@ import os
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
-from utils import paint, plot_pie, plot_segment
 
+if __package__ is None or __package__ == '':
+    # uses current directory visibility
+    from utils import paint, plot_pie, plot_segment
+else:
+    # uses current package visibility
+    from .utils import paint, plot_pie, plot_segment
+    
 __all__ = ["SensorDataset"]
 
 

@@ -4,19 +4,23 @@ import os
 import time
 import random
 import numpy as np
-from sklearn import metrics
+import sklearn.metrics as metrics
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
-import sklearn.metrics as metrics
+from torch.utils.data import DataLoader
 
 from datetime import timedelta
 
-from torch.utils.data import DataLoader
-from utils import init_weights, makedir, paint, AverageMeter
-from datasets import SensorDataset
+if __package__ is None or __package__ == '':
+    # uses current directory visibility
+    from utils import init_weights, makedir, paint, AverageMeter
+    from datasets import SensorDataset
+else:
+    # uses current package visibility
+    from .utils import init_weights, makedir, paint, AverageMeter
+    from .datasets import SensorDataset
 
 train_on_gpu = torch.cuda.is_available()  # Check for cuda
 
